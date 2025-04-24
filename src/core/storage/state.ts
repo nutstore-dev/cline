@@ -56,6 +56,7 @@ export async function getAllExtensionState(context: vscode.ExtensionContext) {
 		apiModelId,
 		apiKey,
 		openRouterApiKey,
+		nutstoreAccessToken,
 		clineApiKey,
 		awsAccessKey,
 		awsSecretKey,
@@ -126,6 +127,7 @@ export async function getAllExtensionState(context: vscode.ExtensionContext) {
 		getGlobalState(context, "apiModelId") as Promise<string | undefined>,
 		getSecret(context, "apiKey") as Promise<string | undefined>,
 		getSecret(context, "openRouterApiKey") as Promise<string | undefined>,
+		getSecret(context, "nutstoreAccessToken") as Promise<string | undefined>,
 		getSecret(context, "clineApiKey") as Promise<string | undefined>,
 		getSecret(context, "awsAccessKey") as Promise<string | undefined>,
 		getSecret(context, "awsSecretKey") as Promise<string | undefined>,
@@ -235,6 +237,7 @@ export async function getAllExtensionState(context: vscode.ExtensionContext) {
 			apiModelId,
 			apiKey,
 			openRouterApiKey,
+			nutstoreAccessToken,
 			clineApiKey,
 			awsAccessKey,
 			awsSecretKey,
@@ -312,6 +315,7 @@ export async function updateApiConfiguration(context: vscode.ExtensionContext, a
 		apiModelId,
 		apiKey,
 		openRouterApiKey,
+		nutstoreAccessToken,
 		awsAccessKey,
 		awsSecretKey,
 		awsSessionToken,
@@ -367,6 +371,7 @@ export async function updateApiConfiguration(context: vscode.ExtensionContext, a
 	await updateGlobalState(context, "apiModelId", apiModelId)
 	await storeSecret(context, "apiKey", apiKey)
 	await storeSecret(context, "openRouterApiKey", openRouterApiKey)
+	await storeSecret(context, "nutstoreAccessToken", nutstoreAccessToken)
 	await storeSecret(context, "awsAccessKey", awsAccessKey)
 	await storeSecret(context, "awsSecretKey", awsSecretKey)
 	await storeSecret(context, "awsSessionToken", awsSessionToken)
@@ -426,6 +431,7 @@ export async function resetExtensionState(context: vscode.ExtensionContext) {
 	const secretKeys: SecretKey[] = [
 		"apiKey",
 		"openRouterApiKey",
+		"nutstoreAccessToken",
 		"awsAccessKey",
 		"awsSecretKey",
 		"awsSessionToken",

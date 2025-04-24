@@ -3,6 +3,7 @@ import { ApiConfiguration, ModelInfo } from "../shared/api"
 import { AnthropicHandler } from "./providers/anthropic"
 import { AwsBedrockHandler } from "./providers/bedrock"
 import { OpenRouterHandler } from "./providers/openrouter"
+import { NutstoreHandler } from "./providers/nutstore"
 import { VertexHandler } from "./providers/vertex"
 import { OpenAiHandler } from "./providers/openai"
 import { OllamaHandler } from "./providers/ollama"
@@ -24,7 +25,7 @@ import { XAIHandler } from "./providers/xai"
 import { SambanovaHandler } from "./providers/sambanova"
 
 export interface ApiHandler {
-	createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream
+	createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[], taskId?: string): ApiStream
 	getModel(): { id: string; info: ModelInfo }
 	getApiStreamUsage?(): Promise<ApiStreamUsageChunk | undefined>
 }
@@ -40,6 +41,8 @@ export function buildApiHandler(configuration: ApiConfiguration): ApiHandler {
 			return new AnthropicHandler(options)
 		case "openrouter":
 			return new OpenRouterHandler(options)
+		case "nutstore":
+			return new NutstoreHandler(options)
 		case "bedrock":
 			return new AwsBedrockHandler(options)
 		case "vertex":

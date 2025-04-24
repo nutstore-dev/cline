@@ -45,6 +45,7 @@ import {
 	updateGlobalState,
 } from "../storage/state"
 import { Task } from "../task"
+import jwt from "jsonwebtoken"
 
 /*
 https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
@@ -61,6 +62,7 @@ export class Controller {
 	mcpHub: McpHub
 	accountService: ClineAccountService
 	private latestAnnouncementId = "april-11-2025" // update to some unique identifier when we add a new announcement
+	private nutstoreAccessTokenRefreshTimer?: NodeJS.Timeout
 
 	constructor(
 		readonly context: vscode.ExtensionContext,
@@ -201,6 +203,11 @@ export class Controller {
 				await this.postStateToWebview()
 				break
 			case "webviewDidLaunch":
+				if (!this.nutstoreAccessTokenRefreshTimer) {
+					this.nutstoreAccessTokenRefreshTimer = setInterval(() => {
+						this.checkNutstoreAccessToken()
+					}, 60 * 1000)
+				}
 				this.postStateToWebview()
 				this.workspaceTracker?.populateFilePaths() // don't await
 				getTheme().then((theme) =>
@@ -564,7 +571,7 @@ export class Controller {
 				const uriScheme = vscode.env.uriScheme
 
 				const authUrl = vscode.Uri.parse(
-					`https://app.cline.bot/auth?state=${encodeURIComponent(nonce)}&callback_url=${encodeURIComponent(`${uriScheme || "vscode"}://saoudrizwan.claude-dev/auth`)}`,
+					`https://app.cline.bot/auth?state=${encodeURIComponent(nonce)}&callback_url=${encodeURIComponent(`${uriScheme || "vscode"}://jianguoyun.cline/auth`)}`,
 				)
 				vscode.env.openExternal(authUrl)
 				break
@@ -727,7 +734,7 @@ export class Controller {
 				const settingsFilter = message.text || ""
 				await vscode.commands.executeCommand(
 					"workbench.action.openSettings",
-					`@ext:saoudrizwan.claude-dev ${settingsFilter}`.trim(), // trim whitespace if no settings filter
+					`@ext:jianguoyun.cline ${settingsFilter}`.trim(), // trim whitespace if no settings filter
 				)
 				break
 			}
@@ -1442,6 +1449,43 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 		// await this.postMessageToWebview({ type: "action", action: "settingsButtonClicked" }) // bad ux if user is on welcome
 	}
 
+	// Nutstore
+	async handleNutstoreCallback(s: string) {
+		const nutstore: ApiProvider = "nutstore"
+		await updateGlobalState(this.context, "apiProvider", nutstore)
+		await storeSecret(this.context, "nutstoreAccessToken", s)
+
+		await this.postStateToWebview()
+		vscode.window.showInformationMessage("坚果云 AccessToken 已获取，可以继续使用。")
+		if (!this.nutstoreAccessTokenRefreshTimer) {
+			this.nutstoreAccessTokenRefreshTimer = setInterval(() => {
+				this.checkNutstoreAccessToken()
+			}, 60 * 1000)
+		}
+	}
+
+	private async checkNutstoreAccessToken() {
+		const provider = await getGlobalState(this.context, "apiProvider")
+		if (provider === "nutstore") {
+			const token = await getSecret(this.context, "nutstoreAccessToken")
+			const onTokenExpired = async () => {
+				clearInterval(this.nutstoreAccessTokenRefreshTimer)
+				this.nutstoreAccessTokenRefreshTimer = undefined
+				await storeSecret(this.context, "nutstoreAccessToken", undefined)
+				await this.postStateToWebview()
+				vscode.window.showErrorMessage("坚果云 AccessToken 已过期，请重新获取。")
+			}
+			if (token) {
+				const decoded = jwt.decode(token, { json: true })
+				if (decoded && decoded.exp && Date.now() > decoded.exp * 1000) {
+					onTokenExpired()
+				}
+			} else {
+				onTokenExpired()
+			}
+		}
+	}
+
 	private async ensureCacheDirectoryExists(): Promise<string> {
 		const cacheDir = path.join(this.context.globalStorageUri.fsPath, "cache")
 		await fs.mkdir(cacheDir, { recursive: true })
@@ -1640,7 +1684,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 	// 'Add to Cline' context menu in editor and code action
 	async addSelectedCodeToChat(code: string, filePath: string, languageId: string, diagnostics?: vscode.Diagnostic[]) {
 		// Ensure the sidebar view is visible
-		await vscode.commands.executeCommand("claude-dev.SidebarProvider.focus")
+		await vscode.commands.executeCommand("cline.SidebarProvider.focus")
 		await setTimeoutPromise(100)
 
 		// Post message to webview with the selected code
@@ -1663,7 +1707,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 	// 'Add to Cline' context menu in Terminal
 	async addSelectedTerminalOutputToChat(output: string, terminalName: string) {
 		// Ensure the sidebar view is visible
-		await vscode.commands.executeCommand("claude-dev.SidebarProvider.focus")
+		await vscode.commands.executeCommand("cline.SidebarProvider.focus")
 		await setTimeoutPromise(100)
 
 		// Post message to webview with the selected terminal output
@@ -1684,7 +1728,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 	// 'Fix with Cline' in code actions
 	async fixWithCline(code: string, filePath: string, languageId: string, diagnostics: vscode.Diagnostic[]) {
 		// Ensure the sidebar view is visible
-		await vscode.commands.executeCommand("claude-dev.SidebarProvider.focus")
+		await vscode.commands.executeCommand("cline.SidebarProvider.focus")
 		await setTimeoutPromise(100)
 
 		const fileMention = this.getFileMentionFromPath(filePath)

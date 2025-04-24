@@ -208,6 +208,13 @@ export function activate(context: vscode.ExtensionContext) {
 				}
 				break
 			}
+			case "/nutstore": {
+				const s = query.get("s")
+				if (s) {
+					await visibleWebview?.controller.handleNutstoreCallback(s)
+				}
+				break
+			}
 			case "/auth": {
 				const token = query.get("token")
 				const state = query.get("state")

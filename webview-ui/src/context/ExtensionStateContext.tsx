@@ -5,6 +5,8 @@ import { ExtensionMessage, ExtensionState, DEFAULT_PLATFORM } from "@shared/Exte
 import {
 	ApiConfiguration,
 	ModelInfo,
+	nutstoreDefaultModelId,
+	nutstoreDefaultModelInfo,
 	openRouterDefaultModelId,
 	openRouterDefaultModelInfo,
 	requestyDefaultModelId,
@@ -59,7 +61,7 @@ export const ExtensionStateContextProvider: React.FC<{
 	const [theme, setTheme] = useState<Record<string, string>>()
 	const [filePaths, setFilePaths] = useState<string[]>([])
 	const [openRouterModels, setOpenRouterModels] = useState<Record<string, ModelInfo>>({
-		[openRouterDefaultModelId]: openRouterDefaultModelInfo,
+		[nutstoreDefaultModelId]: nutstoreDefaultModelInfo,
 	})
 	const [totalTasksSize, setTotalTasksSize] = useState<number | null>(null)
 
@@ -79,6 +81,7 @@ export const ExtensionStateContextProvider: React.FC<{
 					? [
 							config.apiKey,
 							config.openRouterApiKey,
+							config.nutstoreAccessToken,
 							config.awsRegion,
 							config.vertexProjectId,
 							config.openAiApiKey,

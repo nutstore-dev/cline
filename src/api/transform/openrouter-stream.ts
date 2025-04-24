@@ -14,6 +14,7 @@ export async function createOpenRouterStream(
 	o3MiniReasoningEffort?: string,
 	thinkingBudgetTokens?: number,
 	openRouterProviderSorting?: string,
+	taskId?: string,
 ) {
 	// Convert Anthropic messages to OpenAI format
 	let openAiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
@@ -135,20 +136,27 @@ export async function createOpenRouterStream(
 	}
 
 	// @ts-ignore-next-line
-	const stream = await client.chat.completions.create({
-		model: model.id,
-		max_tokens: maxTokens,
-		temperature: temperature,
-		top_p: topP,
-		messages: openAiMessages,
-		stream: true,
-		stream_options: { include_usage: true },
-		transforms: shouldApplyMiddleOutTransform ? ["middle-out"] : undefined,
-		include_reasoning: true,
-		...(model.id === "openai/o3-mini" ? { reasoning_effort: o3MiniReasoningEffort || "medium" } : {}),
-		...(reasoning ? { reasoning } : {}),
-		...(openRouterProviderSorting ? { provider: { sort: openRouterProviderSorting } } : {}),
-	})
+	const stream = await client.chat.completions.create(
+		{
+			model: model.id,
+			max_tokens: maxTokens,
+			temperature: temperature,
+			top_p: topP,
+			messages: openAiMessages,
+			stream: true,
+			stream_options: { include_usage: true },
+			transforms: shouldApplyMiddleOutTransform ? ["middle-out"] : undefined,
+			include_reasoning: true,
+			...(model.id === "openai/o3-mini" ? { reasoning_effort: o3MiniReasoningEffort || "medium" } : {}),
+			...(reasoning ? { reasoning } : {}),
+			...(openRouterProviderSorting ? { provider: { sort: openRouterProviderSorting } } : {}),
+		},
+		{
+			headers: {
+				taskId,
+			},
+		},
+	)
 
 	return stream
 }

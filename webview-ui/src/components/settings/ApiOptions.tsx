@@ -50,15 +50,20 @@ import {
 	doubaoModels,
 	doubaoDefaultModelId,
 	liteLlmModelInfoSaneDefaults,
+	nutstoreDefaultModelId,
+	nutstoreDefaultModelInfo,
 } from "@shared/api"
 import { ExtensionMessage } from "@shared/ExtensionMessage"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { vscode } from "@/utils/vscode"
 import { getAsVar, VSC_DESCRIPTION_FOREGROUND } from "@/utils/vscStyles"
 import VSCodeButtonLink from "@/components/common/VSCodeButtonLink"
+import { createOAuthUrl } from "@nutstore/sso-js"
+// import { _dont_use_in_prod_createOAuthUrl } from "@nutstore/sso-js"
 import OpenRouterModelPicker, { ModelDescriptionMarkdown, OPENROUTER_MODEL_PICKER_Z_INDEX } from "./OpenRouterModelPicker"
 import { ClineAccountInfoCard } from "./ClineAccountInfoCard"
 import RequestyModelPicker from "./RequestyModelPicker"
+import NutstoreModelPicker from "./NutstoreModelPicker"
 
 interface ApiOptionsProps {
 	showModelOptions: boolean
@@ -101,8 +106,18 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 	const [awsEndpointSelected, setAwsEndpointSelected] = useState(!!apiConfiguration?.awsBedrockEndpoint)
 	const [modelConfigurationSelected, setModelConfigurationSelected] = useState(false)
 	const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
-	const [providerSortingSelected, setProviderSortingSelected] = useState(!!apiConfiguration?.openRouterProviderSorting)
+	const [providerSortingSelected, setProviderSortingSelected] = useState(
+		!!apiConfiguration?.nutstoreProviderSorting || !!apiConfiguration?.openRouterProviderSorting,
+	)
 	const [reasoningEffortSelected, setReasoningEffortSelected] = useState(!!apiConfiguration?.reasoningEffort)
+	const [nutstoreAuthUrl, setNutstoreAuthUrl] = useState("")
+
+	createOAuthUrl({
+		// _dont_use_in_prod_createOAuthUrl({
+		app: "cline",
+	}).then((url) => {
+		setNutstoreAuthUrl(`${url}`)
+	})
 
 	const handleInputChange = (field: keyof ApiConfiguration) => (event: any) => {
 		const newValue = event.target.value
@@ -214,6 +229,7 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 						minWidth: 130,
 						position: "relative",
 					}}>
+					<VSCodeOption value="nutstore">坚果云</VSCodeOption>
 					<VSCodeOption value="cline">Cline</VSCodeOption>
 					<VSCodeOption value="openrouter">OpenRouter</VSCodeOption>
 					<VSCodeOption value="anthropic">Anthropic</VSCodeOption>
@@ -528,6 +544,36 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 							Get OpenRouter API Key
 						</VSCodeButtonLink>
 					)}
+					<p
+						style={{
+							fontSize: "12px",
+							marginTop: "5px",
+							color: "var(--vscode-descriptionForeground)",
+						}}>
+						This key is stored locally and only used to make API requests from this extension.{" "}
+						{/* {!apiConfiguration?.openRouterApiKey && (
+							<span style={{ color: "var(--vscode-charts-green)" }}>
+								(<span style={{ fontWeight: 500 }}>Note:</span> OpenRouter is recommended for high rate
+								limits, prompt caching, and wider selection of models.)
+							</span>
+						)} */}
+					</p>
+				</div>
+			)}
+
+			{selectedProvider === "nutstore" && (
+				<div>
+					<VSCodeTextField
+						value={apiConfiguration?.nutstoreAccessToken || ""}
+						style={{ width: "100%" }}
+						type="password"
+						disabled
+						placeholder="AccessToken not generated yet">
+						<span style={{ fontWeight: 500 }}>Nutstore AccessToken</span>
+					</VSCodeTextField>
+					<VSCodeButtonLink href={nutstoreAuthUrl} style={{ margin: "5px 0 0 0" }} appearance="secondary">
+						Get Nutstore AccessToken
+					</VSCodeButtonLink>
 					<p
 						style={{
 							fontSize: "12px",
@@ -1497,8 +1543,59 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 					)}
 				</>
 			)}
+			{selectedProvider === "nutstore" && showModelOptions && (
+				<>
+					<VSCodeCheckbox
+						style={{ marginTop: -10 }}
+						checked={providerSortingSelected}
+						onChange={(e: any) => {
+							const isChecked = e.target.checked === true
+							setProviderSortingSelected(isChecked)
+							if (!isChecked) {
+								setApiConfiguration({
+									...apiConfiguration,
+									nutstoreProviderSorting: "",
+								})
+							}
+						}}>
+						Sort underlying provider routing
+					</VSCodeCheckbox>
 
-			{selectedProvider !== "openrouter" &&
+					{providerSortingSelected && (
+						<div style={{ marginBottom: -6 }}>
+							<DropdownContainer className="dropdown-container" zIndex={OPENROUTER_MODEL_PICKER_Z_INDEX + 1}>
+								<VSCodeDropdown
+									style={{ width: "100%", marginTop: 3 }}
+									value={apiConfiguration?.nutstoreProviderSorting}
+									onChange={(e: any) => {
+										setApiConfiguration({
+											...apiConfiguration,
+											nutstoreProviderSorting: e.target.value,
+										})
+									}}>
+									<VSCodeOption value="">Default</VSCodeOption>
+									<VSCodeOption value="price">Price</VSCodeOption>
+									<VSCodeOption value="throughput">Throughput</VSCodeOption>
+									<VSCodeOption value="latency">Latency</VSCodeOption>
+								</VSCodeDropdown>
+							</DropdownContainer>
+							<p style={{ fontSize: "12px", marginTop: 3, color: "var(--vscode-descriptionForeground)" }}>
+								{!apiConfiguration?.nutstoreProviderSorting &&
+									"Default behavior is to load balance requests across providers (like AWS, Google Vertex, Anthropic), prioritizing price while considering provider uptime"}
+								{apiConfiguration?.nutstoreProviderSorting === "price" &&
+									"Sort providers by price, prioritizing the lowest cost provider"}
+								{apiConfiguration?.nutstoreProviderSorting === "throughput" &&
+									"Sort providers by throughput, prioritizing the provider with the highest throughput (may increase cost)"}
+								{apiConfiguration?.nutstoreProviderSorting === "latency" &&
+									"Sort providers by response time, prioritizing the provider with the lowest latency"}
+							</p>
+						</div>
+					)}
+				</>
+			)}
+
+			{selectedProvider !== "nutstore" &&
+				selectedProvider !== "openrouter" &&
 				selectedProvider !== "cline" &&
 				selectedProvider !== "openai" &&
 				selectedProvider !== "ollama" &&
@@ -1600,6 +1697,7 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 			{(selectedProvider === "openrouter" || selectedProvider === "cline") && showModelOptions && (
 				<OpenRouterModelPicker isPopup={isPopup} />
 			)}
+			{selectedProvider === "nutstore" && showModelOptions && <NutstoreModelPicker isPopup={isPopup} />}
 			{selectedProvider === "requesty" && showModelOptions && <RequestyModelPicker isPopup={isPopup} />}
 
 			{modelIdErrorMessage && (
@@ -1617,7 +1715,7 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 }
 
 export function getOpenRouterAuthUrl(uriScheme?: string) {
-	return `https://openrouter.ai/auth?callback_url=${uriScheme || "vscode"}://saoudrizwan.claude-dev/openrouter`
+	return `https://openrouter.ai/auth?callback_url=${uriScheme || "vscode"}://jianguoyun.cline/openrouter`
 }
 
 export const formatPrice = (price: number) => {
@@ -1853,6 +1951,12 @@ export function normalizeApiConfiguration(apiConfiguration?: ApiConfiguration): 
 				selectedProvider: provider,
 				selectedModelId: apiConfiguration?.openRouterModelId || openRouterDefaultModelId,
 				selectedModelInfo: apiConfiguration?.openRouterModelInfo || openRouterDefaultModelInfo,
+			}
+		case "nutstore":
+			return {
+				selectedProvider: provider,
+				selectedModelId: apiConfiguration?.openRouterModelId || nutstoreDefaultModelId,
+				selectedModelInfo: apiConfiguration?.openRouterModelInfo || nutstoreDefaultModelInfo,
 			}
 		case "requesty":
 			return {

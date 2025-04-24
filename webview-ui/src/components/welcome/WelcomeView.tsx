@@ -9,7 +9,7 @@ import ClineLogoWhite from "@/assets/ClineLogoWhite"
 const WelcomeView = memo(() => {
 	const { apiConfiguration } = useExtensionState()
 	const [apiErrorMessage, setApiErrorMessage] = useState<string | undefined>(undefined)
-	const [showApiOptions, setShowApiOptions] = useState(false)
+	const [showApiOptions, setShowApiOptions] = useState(true)
 
 	const disableLetsGoButton = apiErrorMessage != null
 

@@ -2,6 +2,7 @@ export type SecretKey =
 	| "apiKey"
 	| "clineApiKey"
 	| "openRouterApiKey"
+	| "nutstoreAccessToken"
 	| "awsAccessKey"
 	| "awsSecretKey"
 	| "awsSessionToken"

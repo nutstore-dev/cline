@@ -13,7 +13,7 @@ export class NutstoreHandler implements ApiHandler {
 	private options: ApiHandlerOptions
 	private client: OpenAI
 	lastGenerationId?: string
-	private host: string = "https://webdav-connect.jianguoyun.net.cn"
+	private host: string = "https://ai-assistant.jianguoyun.net.cn"
 	// private host: string = "http://localhost.eo2suite.cn:9000"
 
 	constructor(options: ApiHandlerOptions) {

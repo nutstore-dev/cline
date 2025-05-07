@@ -323,21 +323,29 @@ export const openRouterDefaultModelInfo: ModelInfo = {
 }
 
 // Nutstore
-export const nutstoreDefaultModelId = "google/gemini-2.5-pro-preview-03-25"
+export const nutstoreDefaultModelId = "google/gemini-2.5-pro-preview"
 export const nutstoreDefaultModelInfo: ModelInfo = {
 	maxTokens: 65536,
 	contextWindow: 1_048_576,
 	supportsImages: true,
-	supportsPromptCache: false,
-	// inputPrice: 1.25, // Removed
-	// outputPrice: 10, // Removed
-	inputPriceTiers: [
-		{ tokenLimit: 200000, price: 1.25 }, // Input price for <= 200k input tokens
-		{ tokenLimit: Infinity, price: 2.5 }, // Input price for > 200k input tokens
-	],
-	outputPriceTiers: [
-		{ tokenLimit: 200000, price: 10.0 }, // Output price for <= 200k input tokens
-		{ tokenLimit: Infinity, price: 15.0 }, // Output price for > 200k input tokens
+	supportsPromptCache: true,
+	inputPrice: 2.5, // Default price (highest tier)
+	outputPrice: 15, // Default price (highest tier)
+	cacheReadsPrice: 0.625,
+	cacheWritesPrice: 4.5,
+	tiers: [
+		{
+			contextWindow: 200000,
+			inputPrice: 1.25,
+			outputPrice: 10,
+			cacheReadsPrice: 0.31,
+		},
+		{
+			contextWindow: Infinity,
+			inputPrice: 2.5,
+			outputPrice: 15,
+			cacheReadsPrice: 0.625,
+		},
 	],
 }
 

@@ -46,7 +46,7 @@ const featuredModels = [
 		label: "Best",
 	},
 	{
-		id: "google/gemini-2.5-pro-preview-03-25",
+		id: "google/gemini-2.5-pro-preview",
 		description: "Large 1M context window, great value",
 		label: "Trending",
 	},
@@ -102,7 +102,7 @@ const NutstoreModelPicker: React.FC<NutstoreModelPickerProps> = ({ isPopup }) =>
 
 	const modelIds = useMemo(() => {
 		const unfilteredModelIds = Object.keys(openRouterModels)
-			.filter((id) => ["google/gemini-2.5-pro-preview-03-25", "anthropic/claude-3.7-sonnet"].includes(id))
+			.filter((id) => ["google/gemini-2.5-pro-preview", "anthropic/claude-3.7-sonnet"].includes(id))
 			.sort((a, b) => a.localeCompare(b))
 
 		return apiConfiguration?.apiProvider === "cline"

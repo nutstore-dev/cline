@@ -1305,11 +1305,12 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 
 		await this.postStateToWebview()
 		vscode.window.showInformationMessage("坚果云 AccessToken 已获取，可以继续使用。")
-		if (!this.nutstoreAccessTokenRefreshTimer) {
-			this.nutstoreAccessTokenRefreshTimer = setInterval(() => {
-				this.checkNutstoreAccessToken()
-			}, 60 * 1000)
+		if (this.nutstoreAccessTokenRefreshTimer) {
+			clearInterval(this.nutstoreAccessTokenRefreshTimer)
 		}
+		this.nutstoreAccessTokenRefreshTimer = setInterval(() => {
+			this.checkNutstoreAccessToken()
+		}, 60 * 1000)
 	}
 
 	private async checkNutstoreAccessToken() {

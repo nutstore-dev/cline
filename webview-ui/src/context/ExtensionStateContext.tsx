@@ -13,7 +13,7 @@ import {
 	requestyDefaultModelInfo,
 } from "../../../src/shared/api"
 import { findLastIndex } from "@shared/array"
-import { McpMarketplaceCatalog, McpServer } from "../../../src/shared/mcp"
+import { McpMarketplaceCatalog, McpServer, McpViewTab } from "../../../src/shared/mcp"
 import { convertTextMateToHljs } from "../utils/textMateToHljs"
 import { vscode } from "../utils/vscode"
 import { DEFAULT_BROWSER_SETTINGS } from "@shared/BrowserSettings"
@@ -31,12 +31,22 @@ interface ExtensionStateContextType extends ExtensionState {
 	mcpMarketplaceCatalog: McpMarketplaceCatalog
 	filePaths: string[]
 	totalTasksSize: number | null
+	// View state
+	showMcp: boolean
+	mcpTab?: McpViewTab
+
+	// Setters
 	setApiConfiguration: (config: ApiConfiguration) => void
 	setCustomInstructions: (value?: string) => void
 	setTelemetrySetting: (value: TelemetrySetting) => void
 	setShowAnnouncement: (value: boolean) => void
 	setPlanActSeparateModelsSetting: (value: boolean) => void
+	setShellIntegrationTimeout: (value: number) => void
 	setMcpServers: (value: McpServer[]) => void
+
+	// Navigation
+	setShowMcp: (value: boolean) => void
+	setMcpTab: (tab?: McpViewTab) => void
 }
 
 const ExtensionStateContext = createContext<ExtensionStateContextType | undefined>(undefined)
@@ -44,6 +54,10 @@ const ExtensionStateContext = createContext<ExtensionStateContextType | undefine
 export const ExtensionStateContextProvider: React.FC<{
 	children: React.ReactNode
 }> = ({ children }) => {
+	// UI view state
+	const [showMcp, setShowMcp] = useState(false)
+	const [mcpTab, setMcpTab] = useState<McpViewTab | undefined>(undefined)
+
 	const [state, setState] = useState<ExtensionState>({
 		version: "",
 		clineMessages: [],
@@ -58,6 +72,7 @@ export const ExtensionStateContextProvider: React.FC<{
 		planActSeparateModelsSetting: true,
 		globalClineRulesToggles: {},
 		localClineRulesToggles: {},
+		shellIntegrationTimeout: 4000, // default timeout for shell integration
 	})
 	const [didHydrateState, setDidHydrateState] = useState(false)
 	const [showWelcome, setShowWelcome] = useState(false)
@@ -203,6 +218,8 @@ export const ExtensionStateContextProvider: React.FC<{
 		mcpMarketplaceCatalog,
 		filePaths,
 		totalTasksSize,
+		showMcp,
+		mcpTab,
 		globalClineRulesToggles: state.globalClineRulesToggles || {},
 		localClineRulesToggles: state.localClineRulesToggles || {},
 		setApiConfiguration: (value) =>
@@ -230,7 +247,14 @@ export const ExtensionStateContextProvider: React.FC<{
 				...prevState,
 				shouldShowAnnouncement: value,
 			})),
+		setShellIntegrationTimeout: (value) =>
+			setState((prevState) => ({
+				...prevState,
+				shellIntegrationTimeout: value,
+			})),
 		setMcpServers: (mcpServers: McpServer[]) => setMcpServers(mcpServers),
+		setShowMcp,
+		setMcpTab,
 	}
 
 	return <ExtensionStateContext.Provider value={contextValue}>{children}</ExtensionStateContext.Provider>

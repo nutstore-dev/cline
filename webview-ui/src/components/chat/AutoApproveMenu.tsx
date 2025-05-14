@@ -273,25 +273,6 @@ const AutoApproveMenu = ({ style }: AutoApproveMenuProps) => {
 						setIsExpanded((prev) => !prev)
 					}
 				}}>
-				<VSCodeCheckbox
-					style={{
-						pointerEvents: hasEnabledActions ? "auto" : "none",
-					}}
-					checked={hasEnabledActions && autoApprovalSettings.enabled}
-					disabled={!hasEnabledActions}
-					// onChange={(e) => {
-					// 	const checked = (e.target as HTMLInputElement).checked
-					// 	updateEnabled(checked)
-					// }}
-					onClick={(e) => {
-						/*
-						vscode web toolkit bug: when changing the value of a vscodecheckbox programmatically, it will call its onChange with stale state. This led to updateEnabled being called with an old version of autoApprovalSettings, effectively undoing the state change that was triggered by the last action being unchecked. A simple workaround is to just not use onChange and instead use onClick. We are lucky this is a checkbox and the newvalue is simply opposite of current state.
-						*/
-						if (!hasEnabledActions) return
-						e.stopPropagation() // stops click from bubbling up to the parent, in this case stopping the expanding/collapsing
-						updateEnabled(!autoApprovalSettings.enabled)
-					}}
-				/>
 				<CollapsibleSection
 					isHovered={isHoveringCollapsibleSection}
 					style={{ cursor: "pointer" }}

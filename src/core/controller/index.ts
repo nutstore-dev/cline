@@ -95,6 +95,8 @@ export class Controller {
 		cleanupLegacyCheckpoints(this.context.globalStorageUri.fsPath, this.outputChannel).catch((error) => {
 			console.error("Failed to cleanup legacy checkpoints:", error)
 		})
+
+		updateGlobalState(this.context, "autoApprovalSettings", { enabled: false })
 	}
 
 	/*

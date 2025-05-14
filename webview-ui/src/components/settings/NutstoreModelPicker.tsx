@@ -102,7 +102,14 @@ const NutstoreModelPicker: React.FC<NutstoreModelPickerProps> = ({ isPopup }) =>
 
 	const modelIds = useMemo(() => {
 		const unfilteredModelIds = Object.keys(openRouterModels)
-			.filter((id) => ["google/gemini-2.5-pro-preview", "anthropic/claude-3.7-sonnet"].includes(id))
+			.filter((id) =>
+				[
+					"google/gemini-2.5-pro-preview",
+					"google/gemini-2.5-flash-preview",
+					"anthropic/claude-3.7-sonnet",
+					"openai/gpt-4.1",
+				].includes(id),
+			)
 			.sort((a, b) => a.localeCompare(b))
 
 		return apiConfiguration?.apiProvider === "cline"

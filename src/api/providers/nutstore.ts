@@ -38,7 +38,7 @@ export class NutstoreHandler implements ApiHandler {
 			systemPrompt,
 			messages,
 			this.getModel(),
-			this.options.o3MiniReasoningEffort,
+			this.options.reasoningEffort,
 			this.options.thinkingBudgetTokens,
 			this.options.nutstoreProviderSorting,
 			taskId,

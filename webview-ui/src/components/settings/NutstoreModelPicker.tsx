@@ -108,6 +108,8 @@ const NutstoreModelPicker: React.FC<NutstoreModelPickerProps> = ({ isPopup }) =>
 			.filter((id) =>
 				[
 					"google/gemini-2.5-pro-preview",
+					"google/gemini-2.5-flash-preview-05-20",
+					"google/gemini-2.5-flash-preview-05-20:thinking",
 					"google/gemini-2.5-flash-preview",
 					"google/gemini-2.5-flash-preview:thinking",
 					"anthropic/claude-3.7-sonnet",

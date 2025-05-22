@@ -228,6 +228,7 @@ export const ExtensionStateContextProvider: React.FC<{
 							? [
 									config.apiKey,
 									config.openRouterApiKey,
+									config.nutstoreAccessToken,
 									config.awsRegion,
 									config.vertexProjectId,
 									config.openAiApiKey,

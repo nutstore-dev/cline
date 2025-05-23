@@ -73,8 +73,8 @@ const NutstoreModelPicker: React.FC<NutstoreModelPickerProps> = ({ isPopup }) =>
 		setApiConfiguration({
 			...apiConfiguration,
 			...{
-				openRouterModelId: newModelId,
-				openRouterModelInfo: openRouterModels[newModelId],
+				nutstoreModelId: newModelId,
+				nutstoreModelInfo: openRouterModels[newModelId],
 			},
 		})
 		setSearchTerm(newModelId)

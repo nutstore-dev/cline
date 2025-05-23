@@ -112,6 +112,7 @@ const NutstoreModelPicker: React.FC<NutstoreModelPickerProps> = ({ isPopup }) =>
 					"google/gemini-2.5-flash-preview-05-20:thinking",
 					"google/gemini-2.5-flash-preview",
 					"google/gemini-2.5-flash-preview:thinking",
+					"anthropic/claude-sonnet-4",
 					"anthropic/claude-3.7-sonnet",
 					"openai/gpt-4.1",
 				].includes(id),

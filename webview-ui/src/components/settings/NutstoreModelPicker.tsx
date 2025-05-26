@@ -60,7 +60,7 @@ const featuredModels = [
 
 const NutstoreModelPicker: React.FC<NutstoreModelPickerProps> = ({ isPopup }) => {
 	const { apiConfiguration, setApiConfiguration, openRouterModels } = useExtensionState()
-	const [searchTerm, setSearchTerm] = useState(apiConfiguration?.openRouterModelId || nutstoreDefaultModelId)
+	const [searchTerm, setSearchTerm] = useState(apiConfiguration?.nutstoreModelId || nutstoreDefaultModelId)
 	const [isDropdownVisible, setIsDropdownVisible] = useState(false)
 	const [selectedIndex, setSelectedIndex] = useState(-1)
 	const dropdownRef = useRef<HTMLDivElement>(null)
@@ -72,10 +72,9 @@ const NutstoreModelPicker: React.FC<NutstoreModelPickerProps> = ({ isPopup }) =>
 		// could be setting invalid model id/undefined info but validation will catch it
 		setApiConfiguration({
 			...apiConfiguration,
-			...{
-				nutstoreModelId: newModelId,
-				nutstoreModelInfo: openRouterModels[newModelId],
-			},
+			apiProvider: "nutstore",
+			nutstoreModelId: newModelId,
+			nutstoreModelInfo: openRouterModels[newModelId],
 		})
 		setSearchTerm(newModelId)
 	}

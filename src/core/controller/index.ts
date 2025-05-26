@@ -255,14 +255,23 @@ export class Controller {
 					if (response && response.models) {
 						// update model info in state (this needs to be done here since we don't want to update state while settings is open, and we may refresh models there)
 						const { apiConfiguration } = await getAllExtensionState(this.context)
+						// Update openRouterModelInfo if the current model is still valid
 						if (apiConfiguration.openRouterModelId && response.models[apiConfiguration.openRouterModelId]) {
 							await updateGlobalState(
 								this.context,
 								"openRouterModelInfo",
 								response.models[apiConfiguration.openRouterModelId],
 							)
-							await this.postStateToWebview()
 						}
+						// Update nutstoreModelInfo if the current model is still valid
+						if (apiConfiguration.nutstoreModelId && response.models[apiConfiguration.nutstoreModelId]) {
+							await updateGlobalState(
+								this.context,
+								"nutstoreModelInfo",
+								response.models[apiConfiguration.nutstoreModelId],
+							)
+						}
+						await this.postStateToWebview()
 					}
 				})
 
@@ -589,6 +598,10 @@ export class Controller {
 					await updateGlobalState(this.context, "previousModeModelId", apiConfiguration.openRouterModelId)
 					await updateGlobalState(this.context, "previousModeModelInfo", apiConfiguration.openRouterModelInfo)
 					break
+				case "nutstore":
+					await updateGlobalState(this.context, "previousModeModelId", apiConfiguration.nutstoreModelId)
+					await updateGlobalState(this.context, "previousModeModelInfo", apiConfiguration.nutstoreModelInfo)
+					break
 				case "vscode-lm":
 					// Important we don't set modelId to this, as it's an object not string (webview expects model id to be a string)
 					await updateGlobalState(
@@ -648,6 +661,10 @@ export class Controller {
 					case "cline":
 						await updateGlobalState(this.context, "openRouterModelId", newModelId)
 						await updateGlobalState(this.context, "openRouterModelInfo", newModelInfo)
+						break
+					case "nutstore":
+						await updateGlobalState(this.context, "nutstoreModelId", newModelId)
+						await updateGlobalState(this.context, "nutstoreModelInfo", newModelInfo)
 						break
 					case "vscode-lm":
 						await updateGlobalState(this.context, "vsCodeLmModelSelector", newVsCodeLmModelSelector)

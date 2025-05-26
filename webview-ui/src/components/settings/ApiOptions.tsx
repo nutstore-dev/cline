@@ -2540,8 +2540,8 @@ export function normalizeApiConfiguration(apiConfiguration?: ApiConfiguration): 
 		case "nutstore":
 			return {
 				selectedProvider: provider,
-				selectedModelId: apiConfiguration?.openRouterModelId || nutstoreDefaultModelId,
-				selectedModelInfo: apiConfiguration?.openRouterModelInfo || nutstoreDefaultModelInfo,
+				selectedModelId: apiConfiguration?.nutstoreModelId || nutstoreDefaultModelId,
+				selectedModelInfo: apiConfiguration?.nutstoreModelInfo || nutstoreDefaultModelInfo,
 			}
 		case "requesty":
 			return {

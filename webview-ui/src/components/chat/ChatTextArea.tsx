@@ -1073,6 +1073,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				case "requesty":
 				case "anthropic":
 				case "openrouter":
+				case "nutstore":
 				default:
 					return `${selectedProvider}:${selectedModelId}`
 			}

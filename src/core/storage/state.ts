@@ -123,6 +123,9 @@ export async function getAllExtensionState(context: vscode.ExtensionContext) {
 		openRouterModelId,
 		openRouterModelInfo,
 		openRouterProviderSorting,
+		nutstoreModelId,
+		nutstoreModelInfo,
+		nutstoreProviderSorting,
 		lastShownAnnouncementId,
 		customInstructions,
 		taskHistory,
@@ -211,6 +214,9 @@ export async function getAllExtensionState(context: vscode.ExtensionContext) {
 		getGlobalState(context, "openRouterModelId") as Promise<string | undefined>,
 		getGlobalState(context, "openRouterModelInfo") as Promise<ModelInfo | undefined>,
 		getGlobalState(context, "openRouterProviderSorting") as Promise<string | undefined>,
+		getGlobalState(context, "nutstoreModelId") as Promise<string | undefined>,
+		getGlobalState(context, "nutstoreModelInfo") as Promise<ModelInfo | undefined>,
+		getGlobalState(context, "nutstoreProviderSorting") as Promise<string | undefined>,
 		getGlobalState(context, "lastShownAnnouncementId") as Promise<string | undefined>,
 		getGlobalState(context, "customInstructions") as Promise<string | undefined>,
 		getGlobalState(context, "taskHistory") as Promise<HistoryItem[] | undefined>,
@@ -340,6 +346,9 @@ export async function getAllExtensionState(context: vscode.ExtensionContext) {
 			openRouterModelId,
 			openRouterModelInfo,
 			openRouterProviderSorting,
+			nutstoreModelId,
+			nutstoreModelInfo,
+			nutstoreProviderSorting,
 			vsCodeLmModelSelector,
 			thinkingBudgetTokens,
 			reasoningEffort,
@@ -435,6 +444,9 @@ export async function updateApiConfiguration(context: vscode.ExtensionContext, a
 		openRouterModelId,
 		openRouterModelInfo,
 		openRouterProviderSorting,
+		nutstoreModelId,
+		nutstoreModelInfo,
+		nutstoreProviderSorting,
 		vsCodeLmModelSelector,
 		liteLlmBaseUrl,
 		liteLlmModelId,
@@ -495,6 +507,9 @@ export async function updateApiConfiguration(context: vscode.ExtensionContext, a
 	await updateGlobalState(context, "openRouterModelId", openRouterModelId)
 	await updateGlobalState(context, "openRouterModelInfo", openRouterModelInfo)
 	await updateGlobalState(context, "openRouterProviderSorting", openRouterProviderSorting)
+	await updateGlobalState(context, "nutstoreModelId", nutstoreModelId)
+	await updateGlobalState(context, "nutstoreModelInfo", nutstoreModelInfo)
+	await updateGlobalState(context, "nutstoreProviderSorting", nutstoreProviderSorting)
 	await updateGlobalState(context, "vsCodeLmModelSelector", vsCodeLmModelSelector)
 	await updateGlobalState(context, "liteLlmBaseUrl", liteLlmBaseUrl)
 	await updateGlobalState(context, "liteLlmModelId", liteLlmModelId)

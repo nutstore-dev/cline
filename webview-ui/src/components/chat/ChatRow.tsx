@@ -923,31 +923,128 @@ export const ChatRowContent = ({
 											}
 										}
 
-										// Default error display
+										// Enhanced error display with universal parsing
+										const errorText = apiRequestFailedMessage || apiReqStreamingFailedMessage
+										const parsedError = errorText ? parseApiError(errorText) : null
+
 										return (
-											<p
+											<div
 												style={{
-													...pStyle,
-													color: "var(--vscode-errorForeground)",
+													backgroundColor: "var(--vscode-textBlockQuote-background)",
+													padding: "12px",
+													borderRadius: "4px",
+													marginBottom: "12px",
+													border: "1px solid var(--vscode-editorError-border)",
 												}}>
-												{apiRequestFailedMessage || apiReqStreamingFailedMessage}
-												{apiRequestFailedMessage?.toLowerCase().includes("powershell") && (
+												{parsedError ? (
 													<>
-														<br />
-														<br />
-														It seems like you're having Windows PowerShell issues, please see this{" "}
-														<a
-															href="https://github.com/cline/cline/wiki/TroubleShooting-%E2%80%90-%22PowerShell-is-not-recognized-as-an-internal-or-external-command%22"
+														{/* 错误标题 */}
+														<div
 															style={{
-																color: "inherit",
-																textDecoration: "underline",
+																color: "var(--vscode-errorForeground)",
+																fontWeight: "bold",
+																marginBottom: "8px",
+																display: "flex",
+																alignItems: "center",
+																gap: "8px",
 															}}>
-															troubleshooting guide
-														</a>
-														.
+															<span className="codicon codicon-error" />
+															{parsedError.code && `Error ${parsedError.code}`}
+															{parsedError.provider && ` (${parsedError.provider})`}
+														</div>
+
+														{/* 错误消息 */}
+														<div
+															style={{
+																marginBottom: "8px",
+																lineHeight: "1.4",
+															}}>
+															{parsedError.message}
+														</div>
+
+														{/* 根据错误类型显示提示 */}
+														{(parsedError.type === "auth_error" || parsedError.code === 401) && (
+															<div
+																style={{
+																	marginTop: "8px",
+																	padding: "8px",
+																	backgroundColor:
+																		"var(--vscode-inputValidation-warningBackground)",
+																	borderRadius: "3px",
+																	fontSize: "12px",
+																	color: "var(--vscode-editorWarning-foreground)",
+																}}>
+																<span
+																	className="codicon codicon-key"
+																	style={{ marginRight: "6px" }}
+																/>
+																Authentication failed - please check your API key configuration
+															</div>
+														)}
+
+														{(parsedError.type === "rate_limit_error" ||
+															parsedError.code === 429) && (
+															<div
+																style={{
+																	marginTop: "8px",
+																	padding: "8px",
+																	backgroundColor:
+																		"var(--vscode-inputValidation-warningBackground)",
+																	borderRadius: "3px",
+																	fontSize: "12px",
+																	color: "var(--vscode-editorWarning-foreground)",
+																}}>
+																<span
+																	className="codicon codicon-clock"
+																	style={{ marginRight: "6px" }}
+																/>
+																Rate limit exceeded - please wait before retrying
+															</div>
+														)}
+
+														{(parsedError.type === "quota_error" || parsedError.code === 402) && (
+															<div
+																style={{
+																	marginTop: "8px",
+																	padding: "8px",
+																	backgroundColor:
+																		"var(--vscode-inputValidation-warningBackground)",
+																	borderRadius: "3px",
+																	fontSize: "12px",
+																	color: "var(--vscode-editorWarning-foreground)",
+																}}>
+																<span
+																	className="codicon codicon-credit-card"
+																	style={{ marginRight: "6px" }}
+																/>
+																Quota exceeded - please check your account balance
+															</div>
+														)}
 													</>
+												) : (
+													// 如果解析失败，显示原始错误（保持向后兼容）
+													<div style={{ color: "var(--vscode-errorForeground)" }}>
+														{errorText}
+														{errorText?.toLowerCase().includes("powershell") && (
+															<>
+																<br />
+																<br />
+																It seems like you're having Windows PowerShell issues, please see
+																this{" "}
+																<a
+																	href="https://github.com/cline/cline/wiki/TroubleShooting-%E2%80%90-%22PowerShell-is-not-recognized-as-an-internal-or-external-command%22"
+																	style={{
+																		color: "inherit",
+																		textDecoration: "underline",
+																	}}>
+																	troubleshooting guide
+																</a>
+																.
+															</>
+														)}
+													</div>
 												)}
-											</p>
+											</div>
 										)
 									})()}
 								</>
@@ -1560,5 +1657,74 @@ function parseErrorText(text: string | undefined) {
 		}
 	} catch (e) {
 		// Not JSON or missing required fields
+	}
+}
+
+function parseApiError(errorText: string) {
+	if (!errorText) return null
+
+	// 1. 匹配 "Provider API Error Code: Message" 格式
+	const apiErrorMatch = errorText.match(/(\w+)\s+API\s+Error\s+(\d+):\s+(.+?)(?:\n|$)/i)
+	if (apiErrorMatch) {
+		const [, provider, code, message] = apiErrorMatch
+		return {
+			provider: provider,
+			code: parseInt(code),
+			message: message.trim(),
+			type: "api_error",
+		}
+	}
+
+	// 2. 匹配 "Error Code: Message" 格式
+	const errorCodeMatch = errorText.match(/Error\s+(\d+):\s+(.+?)(?:\n|$)/i)
+	if (errorCodeMatch) {
+		const [, code, message] = errorCodeMatch
+		return {
+			code: parseInt(code),
+			message: message.trim(),
+			type: "error_code",
+		}
+	}
+
+	// 3. 匹配 HTTP 状态码格式
+	const httpErrorMatch = errorText.match(/(\d{3})\s+(.+?)(?:\n|$)/i)
+	if (httpErrorMatch) {
+		const [, code, message] = httpErrorMatch
+		return {
+			code: parseInt(code),
+			message: message.trim(),
+			type: "http_error",
+		}
+	}
+
+	// 4. 匹配包含关键词的错误
+	if (/unauthorized|authentication|invalid.*key/i.test(errorText)) {
+		return {
+			code: 401,
+			message: errorText,
+			type: "auth_error",
+		}
+	}
+
+	if (/rate.*limit|too.*many.*requests/i.test(errorText)) {
+		return {
+			code: 429,
+			message: errorText,
+			type: "rate_limit_error",
+		}
+	}
+
+	if (/quota.*exceeded|insufficient.*credits|payment.*required/i.test(errorText)) {
+		return {
+			code: 402,
+			message: errorText,
+			type: "quota_error",
+		}
+	}
+
+	// 5. 默认返回原始错误
+	return {
+		message: errorText,
+		type: "generic_error",
 	}
 }

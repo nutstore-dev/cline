@@ -1034,31 +1034,33 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 
 		// Handle external openModelSelector prop
 		useEffect(() => {
-			if (openModelSelector) {
+			if (openModelSelector && apiConfiguration?.apiProvider === "nutstore" && !apiConfiguration?.nutstoreAccessToken) {
 				setShowModelSelector(true)
 			}
-		}, [openModelSelector])
+		}, [openModelSelector, apiConfiguration])
 
 		// Use an effect to detect menu close
 		useEffect(() => {
 			if (prevShowModelSelector.current && !showModelSelector) {
 				// Menu was just closed
 				submitApiConfig()
-				// Notify parent that model selector was closed
-				onModelSelectorOpenChange?.(false)
 			}
 			prevShowModelSelector.current = showModelSelector
-		}, [showModelSelector, submitApiConfig, onModelSelectorOpenChange])
+		}, [showModelSelector, submitApiConfig])
 
 		// Remove the handleApiConfigSubmit callback
 		// Update click handler to just toggle the menu
-		const handleModelButtonClick = () => {
+		const handleModelButtonClick = useCallback(() => {
 			setShowModelSelector(!showModelSelector)
-		}
+			if (showModelSelector) {
+				onModelSelectorOpenChange?.(false)
+			}
+		}, [showModelSelector, onModelSelectorOpenChange])
 
 		// Update click away handler to just close menu
 		useClickAway(modelSelectorRef, () => {
 			setShowModelSelector(false)
+			onModelSelectorOpenChange?.(false)
 		})
 
 		// Get model display name

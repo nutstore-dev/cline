@@ -71,6 +71,8 @@ interface ChatTextAreaProps {
 	shouldDisableImages: boolean
 	onHeightChange?: (height: number) => void
 	onFocusChange?: (isFocused: boolean) => void
+	openModelSelector?: boolean
+	onModelSelectorOpenChange?: (isOpen: boolean) => void
 }
 
 interface GitCommit {
@@ -256,6 +258,8 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			shouldDisableImages,
 			onHeightChange,
 			onFocusChange,
+			openModelSelector,
+			onModelSelectorOpenChange,
 		},
 		ref,
 	) => {
@@ -1028,14 +1032,23 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			updateHighlights()
 		}, [inputValue, handleInputChange, updateHighlights])
 
+		// Handle external openModelSelector prop
+		useEffect(() => {
+			if (openModelSelector && !showModelSelector) {
+				setShowModelSelector(true)
+			}
+		}, [openModelSelector, showModelSelector])
+
 		// Use an effect to detect menu close
 		useEffect(() => {
 			if (prevShowModelSelector.current && !showModelSelector) {
 				// Menu was just closed
 				submitApiConfig()
+				// Notify parent that model selector was closed
+				onModelSelectorOpenChange?.(false)
 			}
 			prevShowModelSelector.current = showModelSelector
-		}, [showModelSelector, submitApiConfig])
+		}, [showModelSelector, submitApiConfig, onModelSelectorOpenChange])
 
 		// Remove the handleApiConfigSubmit callback
 		// Update click handler to just toggle the menu

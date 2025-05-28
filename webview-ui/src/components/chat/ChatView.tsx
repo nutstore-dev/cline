@@ -117,6 +117,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 	const textAreaRef = useRef<HTMLTextAreaElement>(null)
 	const [sendingDisabled, setSendingDisabled] = useState(false)
 	const [selectedImages, setSelectedImages] = useState<string[]>([])
+	const [openModelSelector, setOpenModelSelector] = useState(false)
 
 	// we need to hold on to the ask because useEffect > lastMessage will always let us know when an ask comes in and handle it, but by the time handleMessage is called, the last message might not be the ask anymore (it could be a say that followed)
 	const [clineAsk, setClineAsk] = useState<ClineAsk | undefined>(undefined)
@@ -222,6 +223,17 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 	// (since it relies on the content of these messages, we are deep comparing. i.e. the button state after hitting button sets enableButtons to false, and this effect otherwise would have to true again even if messages didn't change
 	const lastMessage = useMemo(() => messages.at(-1), [messages])
 	const secondLastMessage = useMemo(() => messages.at(-2), [messages])
+
+	// Check for 401 errors in API request failures
+	useEffect(() => {
+		if (lastMessage?.ask === "api_req_failed" && lastMessage.text) {
+			// Check if the error message contains 401 status
+			if (lastMessage.text.includes("401") || lastMessage.text.toLowerCase().includes("unauthorized")) {
+				setOpenModelSelector(true)
+			}
+		}
+	}, [lastMessage])
+
 	useDeepCompareEffect(() => {
 		// if last message is an ask, show user ask UI
 		// if user finished a task, then start a new task with a new conversation history since in this moment that the extension is waiting for user response, the user could close the extension and the conversation history would be lost.
@@ -1176,6 +1188,8 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 						scrollToBottomAuto()
 					}
 				}}
+				openModelSelector={openModelSelector}
+				onModelSelectorOpenChange={setOpenModelSelector}
 			/>
 		</div>
 	)

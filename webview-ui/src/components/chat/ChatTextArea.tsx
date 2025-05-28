@@ -1034,10 +1034,10 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 
 		// Handle external openModelSelector prop
 		useEffect(() => {
-			if (openModelSelector && !showModelSelector) {
+			if (openModelSelector) {
 				setShowModelSelector(true)
 			}
-		}, [openModelSelector, showModelSelector])
+		}, [openModelSelector])
 
 		// Use an effect to detect menu close
 		useEffect(() => {

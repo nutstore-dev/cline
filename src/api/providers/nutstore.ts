@@ -8,18 +8,20 @@ import { withRetry } from "../retry"
 import { createOpenRouterStream } from "../transform/openrouter-stream"
 import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
 import { OpenRouterErrorResponse } from "./types"
+import * as vscode from "vscode"
 
 export class NutstoreHandler implements ApiHandler {
 	private options: ApiHandlerOptions
 	private client: OpenAI
 	lastGenerationId?: string
 	private host: string = "https://ai-assistant.jianguoyun.net.cn"
+	private uriScheme: string = vscode.env.uriScheme
 	// private host: string = "http://localhost.eo2suite.cn:9000"
 
 	constructor(options: ApiHandlerOptions) {
 		this.options = options
 		this.client = new OpenAI({
-			baseURL: `${this.host}/cline/llm-router`,
+			baseURL: `${this.host}/cline-${this.uriScheme}/llm-router`,
 			apiKey: "", // put AccessToken in header for verification
 			defaultHeaders: {
 				"HTTP-Referer": "https://cline.bot", // Optional, for including your app on openrouter.ai rankings.

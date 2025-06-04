@@ -61,7 +61,7 @@ import { vscode } from "@/utils/vscode"
 import { ModelsServiceClient } from "@/services/grpc-client"
 import { getAsVar, VSC_DESCRIPTION_FOREGROUND } from "@/utils/vscStyles"
 import VSCodeButtonLink from "@/components/common/VSCodeButtonLink"
-import { createOAuthUrl } from "@nutstore/sso-js"
+import { createNutOAuthUrl } from "@nutstore/sso-js"
 import OpenRouterModelPicker, { ModelDescriptionMarkdown, OPENROUTER_MODEL_PICKER_Z_INDEX } from "./OpenRouterModelPicker"
 import { ClineAccountInfoCard } from "./ClineAccountInfoCard"
 import RequestyModelPicker from "./RequestyModelPicker"
@@ -163,7 +163,7 @@ const ApiOptions = ({
 	const [reasoningEffortSelected, setReasoningEffortSelected] = useState(!!apiConfiguration?.reasoningEffort)
 	const [nutstoreAuthUrl, setNutstoreAuthUrl] = useState("")
 
-	createOAuthUrl({
+	createNutOAuthUrl({
 		// _dont_use_in_prod_createOAuthUrl({
 		app: `cline-${uriScheme}`,
 	}).then((url) => {

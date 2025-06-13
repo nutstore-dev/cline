@@ -121,6 +121,7 @@ enum ApiProvider {
   XAI = 21;
   SAMBANOVA = 22;
   CEREBRAS = 23;
+  NUTSTORE = 24;
 }
 
 // Model info for OpenAI-compatible models
@@ -230,4 +231,10 @@ message ModelsApiConfiguration {
   // From ApiConfiguration (additional fields)
   optional ApiProvider api_provider = 66;
   repeated string favorited_model_ids = 67;
+  
+  // Nutstore specific
+  optional string nutstore_access_token = 68;
+  optional string nutstore_model_id = 69;
+  optional OpenRouterModelInfo nutstore_model_info = 70;
+  optional string nutstore_provider_sorting = 71;
 }

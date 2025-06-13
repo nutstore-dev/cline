@@ -185,4 +185,10 @@ message ApiConfiguration {
   
   // Favorited model IDs
   repeated string favorited_model_ids = 71;
+  
+  // Nutstore specific
+  optional string nutstore_access_token = 72;
+  optional string nutstore_model_id = 73;
+  optional string nutstore_provider_sorting = 74;
+  optional string nutstore_model_info = 75;
 }

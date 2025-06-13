@@ -124,7 +124,7 @@ export class Controller {
 		try {
 			await storeSecret(this.context, "clineApiKey", undefined)
 			await updateGlobalState(this.context, "userInfo", undefined)
-			await updateWorkspaceState(this.context, "apiProvider", "openrouter")
+			await updateWorkspaceState(this.context, "apiProvider", "nutstore")
 			await this.postStateToWebview()
 			vscode.window.showInformationMessage("Successfully logged out of Cline")
 		} catch (error) {

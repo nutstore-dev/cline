@@ -186,6 +186,8 @@ function convertProtoToOpenAiCompatibleModelInfo(
 // Convert application ApiProvider to proto ApiProvider
 function convertApiProviderToProto(provider: string | undefined): ProtoApiProvider {
 	switch (provider) {
+		case "nutstore":
+			return ProtoApiProvider.NUTSTORE
 		case "anthropic":
 			return ProtoApiProvider.ANTHROPIC
 		case "openrouter":
@@ -235,13 +237,15 @@ function convertApiProviderToProto(provider: string | undefined): ProtoApiProvid
 		case "cerebras":
 			return ProtoApiProvider.CEREBRAS
 		default:
-			return ProtoApiProvider.ANTHROPIC
+			return ProtoApiProvider.NUTSTORE
 	}
 }
 
 // Convert proto ApiProvider to application ApiProvider
 function convertProtoToApiProvider(provider: ProtoApiProvider): ApiProvider {
 	switch (provider) {
+		case ProtoApiProvider.NUTSTORE:
+			return "nutstore"
 		case ProtoApiProvider.ANTHROPIC:
 			return "anthropic"
 		case ProtoApiProvider.OPENROUTER:
@@ -291,7 +295,7 @@ function convertProtoToApiProvider(provider: ProtoApiProvider): ApiProvider {
 		case ProtoApiProvider.CEREBRAS:
 			return "cerebras"
 		default:
-			return "anthropic"
+			return "nutstore"
 	}
 }
 

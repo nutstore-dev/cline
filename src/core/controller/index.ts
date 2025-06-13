@@ -92,6 +92,12 @@ export class Controller {
 		})
 
 		updateGlobalState(this.context, "autoApprovalSettings", { enabled: false })
+
+		if (!this.nutstoreAccessTokenRefreshTimer) {
+			this.nutstoreAccessTokenRefreshTimer = setInterval(() => {
+				this.checkNutstoreAccessToken()
+			}, 60 * 1000)
+		}
 	}
 
 	/*

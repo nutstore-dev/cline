@@ -70,6 +70,8 @@ export async function migratePlanActGlobalToWorkspaceStorage(context: vscode.Ext
 		"awsBedrockCustomModelBaseId",
 		"openRouterModelId",
 		"openRouterModelInfo",
+		"nutstoreModelId",
+		"nutstoreModelInfo",
 		"openAiModelId",
 		"openAiModelInfo",
 		"ollamaModelId",
@@ -209,8 +211,6 @@ export async function getAllExtensionState(context: vscode.ExtensionContext) {
 		mistralApiKey,
 		azureApiVersion,
 		openRouterProviderSorting,
-		nutstoreModelId,
-		nutstoreModelInfo,
 		nutstoreProviderSorting,
 		lastShownAnnouncementId,
 		taskHistory,
@@ -276,8 +276,6 @@ export async function getAllExtensionState(context: vscode.ExtensionContext) {
 		getSecret(context, "mistralApiKey") as Promise<string | undefined>,
 		getGlobalState(context, "azureApiVersion") as Promise<string | undefined>,
 		getGlobalState(context, "openRouterProviderSorting") as Promise<string | undefined>,
-		getGlobalState(context, "nutstoreModelId") as Promise<string | undefined>,
-		getGlobalState(context, "nutstoreModelInfo") as Promise<ModelInfo | undefined>,
 		getGlobalState(context, "nutstoreProviderSorting") as Promise<string | undefined>,
 		getGlobalState(context, "lastShownAnnouncementId") as Promise<string | undefined>,
 		getGlobalState(context, "taskHistory") as Promise<HistoryItem[] | undefined>,
@@ -323,6 +321,8 @@ export async function getAllExtensionState(context: vscode.ExtensionContext) {
 		awsBedrockCustomModelBaseId,
 		openRouterModelId,
 		openRouterModelInfo,
+		nutstoreModelId,
+		nutstoreModelInfo,
 		openAiModelId,
 		openAiModelInfo,
 		ollamaModelId,
@@ -596,6 +596,8 @@ export async function updateApiConfiguration(context: vscode.ExtensionContext, a
 	await updateWorkspaceState(context, "awsBedrockCustomModelBaseId", awsBedrockCustomModelBaseId)
 	await updateWorkspaceState(context, "openRouterModelId", openRouterModelId)
 	await updateWorkspaceState(context, "openRouterModelInfo", openRouterModelInfo)
+	await updateWorkspaceState(context, "nutstoreModelId", nutstoreModelId)
+	await updateWorkspaceState(context, "nutstoreModelInfo", nutstoreModelInfo)
 	await updateWorkspaceState(context, "openAiModelId", openAiModelId)
 	await updateWorkspaceState(context, "openAiModelInfo", openAiModelInfo)
 	await updateWorkspaceState(context, "ollamaModelId", ollamaModelId)
@@ -625,6 +627,7 @@ export async function updateApiConfiguration(context: vscode.ExtensionContext, a
 	await updateGlobalState(context, "geminiBaseUrl", geminiBaseUrl)
 	await updateGlobalState(context, "azureApiVersion", azureApiVersion)
 	await updateGlobalState(context, "openRouterProviderSorting", openRouterProviderSorting)
+	await updateGlobalState(context, "nutstoreProviderSorting", nutstoreProviderSorting)
 	await updateGlobalState(context, "liteLlmBaseUrl", liteLlmBaseUrl)
 	await updateGlobalState(context, "liteLlmUsePromptCache", liteLlmUsePromptCache)
 	await updateGlobalState(context, "qwenApiLine", qwenApiLine)
@@ -637,6 +640,7 @@ export async function updateApiConfiguration(context: vscode.ExtensionContext, a
 	// Secret updates
 	await storeSecret(context, "apiKey", apiKey)
 	await storeSecret(context, "openRouterApiKey", openRouterApiKey)
+	await storeSecret(context, "nutstoreAccessToken", nutstoreAccessToken)
 	await storeSecret(context, "clineApiKey", clineApiKey)
 	await storeSecret(context, "awsAccessKey", awsAccessKey)
 	await storeSecret(context, "awsSecretKey", awsSecretKey)

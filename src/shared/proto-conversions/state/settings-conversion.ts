@@ -19,6 +19,7 @@ export function convertApiConfigurationToProtoApiConfiguration(config: ApiConfig
 		// Provider-specific API keys
 		clineApiKey: config.clineApiKey,
 		openrouterApiKey: config.openRouterApiKey,
+		nutstoreAccessToken: config.nutstoreAccessToken,
 		anthropicBaseUrl: config.anthropicBaseUrl,
 		openaiApiKey: config.openAiApiKey,
 		openaiNativeApiKey: config.openAiNativeApiKey,
@@ -38,6 +39,7 @@ export function convertApiConfigurationToProtoApiConfiguration(config: ApiConfig
 
 		// Model IDs - each provider has its own field
 		openrouterModelId: config.openRouterModelId,
+		nutstoreModelId: config.nutstoreModelId,
 		openaiModelId: config.openAiModelId,
 		anthropicModelId: config.apiModelId,
 		bedrockModelId: config.apiModelId,
@@ -101,10 +103,12 @@ export function convertApiConfigurationToProtoApiConfiguration(config: ApiConfig
 
 		// OpenRouter specific
 		openrouterProviderSorting: config.openRouterProviderSorting,
+		nutstoreProviderSorting: config.nutstoreProviderSorting,
 
 		// Complex objects stored as JSON strings
 		vscodeLmModelSelector: config.vsCodeLmModelSelector ? JSON.stringify(config.vsCodeLmModelSelector) : undefined,
 		openrouterModelInfo: config.openRouterModelInfo ? JSON.stringify(config.openRouterModelInfo) : undefined,
+		nutstoreModelInfo: config.nutstoreModelInfo ? JSON.stringify(config.nutstoreModelInfo) : undefined,
 		openaiModelInfo: config.openAiModelInfo ? JSON.stringify(config.openAiModelInfo) : undefined,
 		requestyModelInfo: config.requestyModelInfo ? JSON.stringify(config.requestyModelInfo) : undefined,
 		litellmModelInfo: config.liteLlmModelInfo ? JSON.stringify(config.liteLlmModelInfo) : undefined,
@@ -129,6 +133,7 @@ export function convertProtoApiConfigurationToApiConfiguration(protoConfig: Prot
 		// Provider-specific API keys
 		clineApiKey: protoConfig.clineApiKey,
 		openRouterApiKey: protoConfig.openrouterApiKey,
+		nutstoreAccessToken: protoConfig.nutstoreAccessToken,
 		anthropicBaseUrl: protoConfig.anthropicBaseUrl,
 		openAiApiKey: protoConfig.openaiApiKey,
 		openAiNativeApiKey: protoConfig.openaiNativeApiKey,
@@ -148,6 +153,7 @@ export function convertProtoApiConfigurationToApiConfiguration(protoConfig: Prot
 
 		// Model IDs
 		openRouterModelId: protoConfig.openrouterModelId,
+		nutstoreModelId: protoConfig.nutstoreModelId,
 		openAiModelId: protoConfig.openaiModelId,
 		ollamaModelId: protoConfig.ollamaModelId,
 		lmStudioModelId: protoConfig.lmStudioModelId,
@@ -207,6 +213,7 @@ export function convertProtoApiConfigurationToApiConfiguration(protoConfig: Prot
 
 		// OpenRouter specific
 		openRouterProviderSorting: protoConfig.openrouterProviderSorting,
+		nutstoreProviderSorting: protoConfig.nutstoreProviderSorting,
 
 		// Arrays
 		favoritedModelIds: protoConfig.favoritedModelIds || [],
@@ -219,6 +226,9 @@ export function convertProtoApiConfigurationToApiConfiguration(protoConfig: Prot
 		}
 		if (protoConfig.openrouterModelInfo) {
 			config.openRouterModelInfo = JSON.parse(protoConfig.openrouterModelInfo)
+		}
+		if (protoConfig.nutstoreModelInfo) {
+			config.nutstoreModelInfo = JSON.parse(protoConfig.nutstoreModelInfo)
 		}
 		if (protoConfig.openaiModelInfo) {
 			config.openAiModelInfo = JSON.parse(protoConfig.openaiModelInfo)

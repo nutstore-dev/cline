@@ -104,11 +104,9 @@ const NutstoreModelPicker: React.FC<NutstoreModelPickerProps> = ({ isPopup }) =>
 		const unfilteredModelIds = Object.keys(openRouterModels)
 			.filter((id) =>
 				[
-					"google/gemini-2.5-pro-preview",
-					"google/gemini-2.5-flash-preview-05-20",
-					"google/gemini-2.5-flash-preview-05-20:thinking",
-					"google/gemini-2.5-flash-preview",
-					"google/gemini-2.5-flash-preview:thinking",
+					"google/gemini-2.5-pro",
+					"google/gemini-2.5-flash",
+					"google/gemini-2.5-flash-lite-preview-06-17",
 					"anthropic/claude-sonnet-4",
 					"anthropic/claude-3.7-sonnet",
 					"openai/gpt-4.1",

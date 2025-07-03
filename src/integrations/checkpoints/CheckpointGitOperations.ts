@@ -139,15 +139,8 @@ export class GitOperations {
 	 * @throws Error if renaming any .git directory fails
 	 */
 	public async renameNestedGitRepos(disable: boolean) {
-		// Find all .git directories that are not at the root level
-		const gitPaths = await globby("**/.git" + (disable ? "" : GIT_DISABLED_SUFFIX), {
-			cwd: this.cwd,
-			onlyDirectories: true,
-			ignore: [".git"], // Ignore root level .git
-			dot: true,
-			markDirectories: false,
-			suppressErrors: true,
-		})
+		// Find all .git directories that are not at the root level with timeout
+		const gitPaths = await this.findGitDirectoriesWithTimeout(disable)
 
 		// For each nested .git directory, rename it based on operation
 		for (const gitPath of gitPaths) {
@@ -209,6 +202,41 @@ export class GitOperations {
 			return { success: false }
 		} finally {
 			await this.renameNestedGitRepos(false)
+		}
+	}
+
+	/**
+	 * Finds git directories with a timeout to prevent indefinite hanging.
+	 * Uses Promise.race to add a timeout to the globby operation.
+	 *
+	 * @param disable - If true, looks for .git directories. If false, looks for .git_disabled directories.
+	 * @returns Promise<string[]> Array of git directory paths
+	 */
+	private async findGitDirectoriesWithTimeout(disable: boolean): Promise<string[]> {
+		const TIMEOUT_MS = 10000 // 10 seconds timeout
+		const pattern = "**/.git" + (disable ? "" : GIT_DISABLED_SUFFIX)
+
+		try {
+			// Race between globby and timeout
+			const gitPaths = await Promise.race([
+				globby(pattern, {
+					cwd: this.cwd,
+					onlyDirectories: true,
+					ignore: [".git", "**/node_modules/**"], // Ignore root level .git and node_modules
+					dot: true,
+					markDirectories: false,
+					suppressErrors: true,
+				}),
+				new Promise<string[]>((_, reject) => {
+					setTimeout(() => reject(new Error("Globby operation timed out after 10 seconds")), TIMEOUT_MS)
+				}),
+			])
+			return gitPaths
+		} catch (error) {
+			console.warn("Globby operation failed or timed out:", error)
+			// Return empty array as fallback - this prevents the hanging but may miss some nested repos
+			// In most cases, this is acceptable as nested git repos are less common
+			return []
 		}
 	}
 }

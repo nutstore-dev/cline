@@ -10,15 +10,24 @@ import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
 import { OpenRouterErrorResponse } from "./types"
 import * as vscode from "vscode"
 
+interface NutstoreHandlerOptions {
+	nutstoreAccessToken?: string
+	nutstoreModelId?: string
+	nutstoreModelInfo?: ModelInfo
+	nutstoreProviderSorting?: string
+	reasoningEffort?: string
+	thinkingBudgetTokens?: number
+}
+
 export class NutstoreHandler implements ApiHandler {
-	private options: ApiHandlerOptions
+	private options: NutstoreHandlerOptions
 	private client: OpenAI
 	lastGenerationId?: string
 	private host: string = "https://ai-assistant.jianguoyun.net.cn"
 	private uriScheme: string = vscode.env.uriScheme
 	// private host: string = "http://localhost.eo2suite.cn:9000"
 
-	constructor(options: ApiHandlerOptions) {
+	constructor(options: NutstoreHandlerOptions) {
 		this.options = options
 		this.client = new OpenAI({
 			baseURL: `${this.host}/cline-${this.uriScheme}/llm-router`,

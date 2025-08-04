@@ -1,15 +1,18 @@
 import { type ReactNode } from "react"
 
 import { ExtensionStateContextProvider } from "./context/ExtensionStateContext"
-import { FirebaseAuthProvider } from "./context/FirebaseAuthContext"
+import { ClineAuthProvider } from "./context/ClineAuthContext"
 import { HeroUIProvider } from "@heroui/react"
+import { CustomPostHogProvider } from "./CustomPostHogProvider"
 
 export function Providers({ children }: { children: ReactNode }) {
 	return (
 		<ExtensionStateContextProvider>
-			<FirebaseAuthProvider>
-				<HeroUIProvider>{children}</HeroUIProvider>
-			</FirebaseAuthProvider>
+			<CustomPostHogProvider>
+				<ClineAuthProvider>
+					<HeroUIProvider>{children}</HeroUIProvider>
+				</ClineAuthProvider>
+			</CustomPostHogProvider>
 		</ExtensionStateContextProvider>
 	)
 }

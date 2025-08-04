@@ -10,6 +10,10 @@
 	},
 	// Turn off tsc task auto detection since we have the necessary tasks as npm scripts
 	"typescript.tsc.autoDetect": "off",
+	// Protobuf settings
+	"protoc": {
+		"options": ["--proto_path=proto"]
+	},
 	"typescript.tsdk": "node_modules/typescript/lib",
 	"npm.packageManager": "npm"
 }

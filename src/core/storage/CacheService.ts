@@ -239,6 +239,7 @@ export class CacheService {
 			sapAiCoreTokenUrl,
 			sapAiResourceGroup,
 			claudeCodePath,
+			basetenApiKey,
 			huggingFaceApiKey,
 			requestTimeoutMs,
 			// Plan mode configurations
@@ -266,6 +267,8 @@ export class CacheService {
 			planModeSapAiCoreModelId,
 			planModeGroqModelId,
 			planModeGroqModelInfo,
+			planModeBasetenModelId,
+			planModeBasetenModelInfo,
 			planModeHuggingFaceModelId,
 			planModeHuggingFaceModelInfo,
 			// Act mode configurations
@@ -293,6 +296,8 @@ export class CacheService {
 			actModeSapAiCoreModelId,
 			actModeGroqModelId,
 			actModeGroqModelInfo,
+			actModeBasetenModelId,
+			actModeBasetenModelInfo,
 			actModeHuggingFaceModelId,
 			actModeHuggingFaceModelInfo,
 		} = apiConfiguration
@@ -324,6 +329,8 @@ export class CacheService {
 			planModeSapAiCoreModelId,
 			planModeGroqModelId,
 			planModeGroqModelInfo,
+			planModeBasetenModelId,
+			planModeBasetenModelInfo,
 			planModeHuggingFaceModelId,
 			planModeHuggingFaceModelInfo,
 
@@ -352,6 +359,8 @@ export class CacheService {
 			actModeSapAiCoreModelId,
 			actModeGroqModelId,
 			actModeGroqModelInfo,
+			actModeBasetenModelId,
+			actModeBasetenModelInfo,
 			actModeHuggingFaceModelId,
 			actModeHuggingFaceModelInfo,
 
@@ -419,6 +428,7 @@ export class CacheService {
 			nebiusApiKey,
 			sapAiCoreClientId,
 			sapAiCoreClientSecret,
+			basetenApiKey,
 			huggingFaceApiKey,
 		})
 	}
@@ -625,6 +635,7 @@ export class CacheService {
 			sambanovaApiKey,
 			cerebrasApiKey,
 			groqApiKey,
+			basetenApiKey,
 			moonshotApiKey,
 			nebiusApiKey,
 			favoritedModelIds,
@@ -664,6 +675,8 @@ export class CacheService {
 			planModeSapAiCoreModelId,
 			planModeGroqModelId,
 			planModeGroqModelInfo,
+			planModeBasetenModelId,
+			planModeBasetenModelInfo,
 			planModeHuggingFaceModelId,
 			planModeHuggingFaceModelInfo,
 			// Act mode configurations
@@ -691,6 +704,8 @@ export class CacheService {
 			actModeSapAiCoreModelId,
 			actModeGroqModelId,
 			actModeGroqModelInfo,
+			actModeBasetenModelId,
+			actModeBasetenModelInfo,
 			actModeHuggingFaceModelId,
 			actModeHuggingFaceModelInfo,
 		} = apiConfiguration
@@ -722,6 +737,8 @@ export class CacheService {
 			planModeSapAiCoreModelId,
 			planModeGroqModelId,
 			planModeGroqModelInfo,
+			planModeBasetenModelId,
+			planModeBasetenModelInfo,
 			planModeHuggingFaceModelId,
 			planModeHuggingFaceModelInfo,
 
@@ -750,6 +767,8 @@ export class CacheService {
 			actModeSapAiCoreModelId,
 			actModeGroqModelId,
 			actModeGroqModelInfo,
+			actModeBasetenModelId,
+			actModeBasetenModelInfo,
 			actModeHuggingFaceModelId,
 			actModeHuggingFaceModelInfo,
 
@@ -818,6 +837,7 @@ export class CacheService {
 			sambanovaApiKey,
 			cerebrasApiKey,
 			groqApiKey,
+			basetenApiKey,
 			moonshotApiKey,
 			nebiusApiKey,
 			sapAiCoreClientId,
@@ -861,6 +881,7 @@ export class CacheService {
 			sambanovaApiKey: this.secretsCache.get("sambanovaApiKey"),
 			cerebrasApiKey: this.secretsCache.get("cerebrasApiKey"),
 			groqApiKey: this.secretsCache.get("groqApiKey"),
+			basetenApiKey: this.secretsCache.get("basetenApiKey"),
 			moonshotApiKey: this.secretsCache.get("moonshotApiKey"),
 			nebiusApiKey: this.secretsCache.get("nebiusApiKey"),
 			sapAiCoreClientId: this.secretsCache.get("sapAiCoreClientId"),
@@ -925,6 +946,8 @@ export class CacheService {
 			planModeSapAiCoreModelId: this.globalStateCache.get("planModeSapAiCoreModelId"),
 			planModeGroqModelId: this.globalStateCache.get("planModeGroqModelId"),
 			planModeGroqModelInfo: this.globalStateCache.get("planModeGroqModelInfo"),
+			planModeBasetenModelId: this.globalStateCache.get("planModeBasetenModelId"),
+			planModeBasetenModelInfo: this.globalStateCache.get("planModeBasetenModelInfo"),
 			planModeHuggingFaceModelId: this.globalStateCache.get("planModeHuggingFaceModelId"),
 			planModeHuggingFaceModelInfo: this.globalStateCache.get("planModeHuggingFaceModelInfo"),
 
@@ -953,6 +976,8 @@ export class CacheService {
 			actModeSapAiCoreModelId: this.globalStateCache.get("actModeSapAiCoreModelId"),
 			actModeGroqModelId: this.globalStateCache.get("actModeGroqModelId"),
 			actModeGroqModelInfo: this.globalStateCache.get("actModeGroqModelInfo"),
+			actModeBasetenModelId: this.globalStateCache.get("actModeBasetenModelId"),
+			actModeBasetenModelInfo: this.globalStateCache.get("actModeBasetenModelInfo"),
 			actModeHuggingFaceModelId: this.globalStateCache.get("actModeHuggingFaceModelId"),
 			actModeHuggingFaceModelInfo: this.globalStateCache.get("actModeHuggingFaceModelInfo"),
 		} as ApiConfiguration

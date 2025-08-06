@@ -30,6 +30,7 @@ export type SecretKey =
 	| "sapAiCoreClientSecret"
 	| "groqApiKey"
 	| "huaweiCloudMaasApiKey"
+	| "basetenApiKey"
 
 export type GlobalStateKey =
 	| "awsRegion"
@@ -85,6 +86,7 @@ export type GlobalStateKey =
 	| "sapAiCoreBaseUrl"
 	| "sapAiResourceGroup"
 	| "claudeCodePath"
+	| "strictPlanModeEnabled"
 	// Settings around plan/act and ephemeral model configuration
 	| "preferredLanguage"
 	| "openaiReasoningEffort"
@@ -114,6 +116,8 @@ export type GlobalStateKey =
 	| "planModeSapAiCoreModelId"
 	| "planModeGroqModelId"
 	| "planModeGroqModelInfo"
+	| "planModeBasetenModelId"
+	| "planModeBasetenModelInfo"
 	| "planModeHuggingFaceModelId"
 	| "planModeHuggingFaceModelInfo"
 	| "planModeHuaweiCloudMaasModelId"
@@ -143,6 +147,8 @@ export type GlobalStateKey =
 	| "actModeSapAiCoreModelId"
 	| "actModeGroqModelId"
 	| "actModeGroqModelInfo"
+	| "actModeBasetenModelId"
+	| "actModeBasetenModelInfo"
 	| "actModeHuggingFaceModelId"
 	| "actModeHuggingFaceModelInfo"
 	| "actModeHuaweiCloudMaasModelId"

@@ -2,33 +2,36 @@ import { Controller } from ".."
 import { EmptyRequest } from "@shared/proto/cline/common"
 import { OpenRouterCompatibleModelInfo, OpenRouterModelInfo } from "@shared/proto/cline/models"
 import { getAllExtensionState } from "../../storage/state"
-import { groqModels } from "../../../shared/api"
+import { basetenModels } from "../../../shared/api"
 import axios from "axios"
 import path from "path"
 import fs from "fs/promises"
 import { fileExistsAtPath } from "@utils/fs"
 import { GlobalFileNames } from "@core/storage/disk"
-import { telemetryService } from "@/services/posthog/PostHogClientProvider"
 
 /**
- * Refreshes the Groq models and returns the updated model list
+ * Refreshes the Baseten models and returns the updated model list
  * @param controller The controller instance
  * @param request Empty request object
- * @returns Response containing the Groq models
+ * @returns Response containing the Baseten models
  */
-export async function refreshGroqModels(controller: Controller, request: EmptyRequest): Promise<OpenRouterCompatibleModelInfo> {
-	const groqModelsFilePath = path.join(await ensureCacheDirectoryExists(controller), GlobalFileNames.groqModels)
+export async function refreshBasetenModels(
+	controller: Controller,
+	request: EmptyRequest,
+): Promise<OpenRouterCompatibleModelInfo> {
+	console.log("=== refreshBasetenModels called ===")
+	const basetenModelsFilePath = path.join(await ensureCacheDirectoryExists(controller), GlobalFileNames.basetenModels)
 
-	// Get the Groq API key from the controller's state
+	// Get the Baseten API key from the controller's state
 	const { apiConfiguration } = await getAllExtensionState(controller.context)
-	const groqApiKey = apiConfiguration?.groqApiKey
+	const basetenApiKey = apiConfiguration?.basetenApiKey
 
 	let models: Record<string, Partial<OpenRouterModelInfo>> = {}
 	try {
-		if (!groqApiKey) {
-			console.log("No Groq API key found, using static models as fallback")
+		if (!basetenApiKey) {
+			console.log("No Baseten API key found, using static models as fallback")
 			// Don't throw an error, just use static models
-			for (const [modelId, modelInfo] of Object.entries(groqModels)) {
+			for (const [modelId, modelInfo] of Object.entries(basetenModels)) {
 				models[modelId] = {
 					maxTokens: modelInfo.maxTokens,
 					contextWindow: modelInfo.contextWindow,
@@ -38,19 +41,19 @@ export async function refreshGroqModels(controller: Controller, request: EmptyRe
 					outputPrice: modelInfo.outputPrice,
 					cacheWritesPrice: (modelInfo as any).cacheWritesPrice || 0,
 					cacheReadsPrice: (modelInfo as any).cacheReadsPrice || 0,
-					description: modelInfo.description || `${modelId} model`,
+					description: (modelInfo as any).description || `${modelId} model`,
 				}
 			}
 		} else {
 			// Ensure the API key is properly formatted
-			const cleanApiKey = groqApiKey.trim()
-			if (!cleanApiKey.startsWith("gsk_")) {
-				throw new Error("Invalid Groq API key format. Groq API keys should start with 'gsk_'")
+			const cleanApiKey = basetenApiKey.trim()
+			if (!cleanApiKey) {
+				throw new Error("Invalid Baseten API key format")
 			}
 
-			console.log("Fetching Groq models with API key:", cleanApiKey.substring(0, 10) + "...")
+			console.log("Fetching Baseten models with API key:", cleanApiKey.substring(0, 10) + "...")
 
-			const response = await axios.get("https://api.groq.com/openai/v1/models", {
+			const response = await axios.get("https://inference.baseten.co/v1/models", {
 				headers: {
 					Authorization: `Bearer ${cleanApiKey}`,
 					"Content-Type": "application/json",
@@ -68,39 +71,45 @@ export async function refreshGroqModels(controller: Controller, request: EmptyRe
 						continue
 					}
 
+					// Only include models that are listed in the static basetenModels
+					if (!(rawModel.id in basetenModels)) {
+						console.log(`Skipping model ${rawModel.id} - not in static basetenModels list`)
+						continue
+					}
+
 					// Check if we have static pricing information for this model
-					const staticModelInfo = groqModels[rawModel.id as keyof typeof groqModels]
+					const staticModelInfo = basetenModels[rawModel.id as keyof typeof basetenModels]
 
 					const modelInfo: Partial<OpenRouterModelInfo> = {
-						maxTokens: rawModel.max_completion_tokens || staticModelInfo?.maxTokens || 8192,
-						contextWindow: rawModel.context_window || staticModelInfo?.contextWindow || 8192,
-						supportsImages: detectImageSupport(rawModel, staticModelInfo),
+						maxTokens: staticModelInfo?.maxTokens || 8192,
+						contextWindow: staticModelInfo?.contextWindow || 8192,
+						supportsImages: staticModelInfo?.supportsImages || false,
 						supportsPromptCache: staticModelInfo?.supportsPromptCache || false,
 						inputPrice: staticModelInfo?.inputPrice || 0,
 						outputPrice: staticModelInfo?.outputPrice || 0,
-						cacheWritesPrice: (staticModelInfo as any)?.cacheWritesPrice || 0,
-						cacheReadsPrice: (staticModelInfo as any).cacheReadsPrice || 0,
+						cacheWritesPrice: staticModelInfo?.cacheWritesPrice || 0,
+						cacheReadsPrice: staticModelInfo?.cacheReadsPrice || 0,
 						description: generateModelDescription(rawModel, staticModelInfo),
 					}
 
 					models[rawModel.id] = modelInfo
 				}
 			} else {
-				console.error("Invalid response from Groq API")
+				console.error("Invalid response from Baseten API")
 			}
-			await fs.writeFile(groqModelsFilePath, JSON.stringify(models))
-			console.log("Groq models fetched and saved", models)
+			await fs.writeFile(basetenModelsFilePath, JSON.stringify(models))
+			console.log("Baseten models fetched and saved:", Object.keys(models))
 		}
 	} catch (error) {
-		console.error("Error fetching Groq models:", error)
+		console.error("Error fetching Baseten models:", error)
 
 		// Provide more specific error messages
 		let errorMessage = "Unknown error occurred"
 		if (axios.isAxiosError(error)) {
 			if (error.response?.status === 401) {
-				errorMessage = "Invalid Groq API key. Please check your API key in settings."
+				errorMessage = "Invalid Baseten API key. Please check your API key in settings."
 			} else if (error.response?.status === 403) {
-				errorMessage = "Access forbidden. Please verify your Groq API key has the correct permissions."
+				errorMessage = "Access forbidden. Please verify your Baseten API key has the correct permissions."
 			} else if (error.response?.status === 429) {
 				errorMessage = "Rate limit exceeded. Please try again later."
 			} else if (error.code === "ECONNABORTED") {
@@ -112,22 +121,22 @@ export async function refreshGroqModels(controller: Controller, request: EmptyRe
 			errorMessage = error.message
 		}
 
-		telemetryService.captureProviderApiError({
-			taskId: controller.task?.taskId || "",
-			errorMessage,
-			errorStatus: error.status,
-			model: "groq",
-		})
+		console.error("Baseten API Error:", errorMessage)
 
 		// If we failed to fetch models, try to read cached models first
-		const cachedModels = await readGroqModels(controller)
+		const cachedModels = await readBasetenModels(controller)
 		if (cachedModels && Object.keys(cachedModels).length > 0) {
-			console.log("Using cached Groq models")
-			models = cachedModels
+			console.log("Using cached Baseten models")
+			// Filter cached models to only include those in static basetenModels
+			for (const [modelId, modelInfo] of Object.entries(cachedModels)) {
+				if (modelId in basetenModels) {
+					models[modelId] = modelInfo
+				}
+			}
 		} else {
 			// Fall back to static models from shared/api.ts
-			console.log("Using static Groq models as fallback")
-			for (const [modelId, modelInfo] of Object.entries(groqModels)) {
+			console.log("Using static Baseten models as fallback")
+			for (const [modelId, modelInfo] of Object.entries(basetenModels)) {
 				models[modelId] = {
 					maxTokens: modelInfo.maxTokens,
 					contextWindow: modelInfo.contextWindow,
@@ -137,7 +146,7 @@ export async function refreshGroqModels(controller: Controller, request: EmptyRe
 					outputPrice: modelInfo.outputPrice,
 					cacheWritesPrice: (modelInfo as any).cacheWritesPrice || 0,
 					cacheReadsPrice: (modelInfo as any).cacheReadsPrice || 0,
-					description: modelInfo.description || `${modelId} model`,
+					description: (modelInfo as any).description || `${modelId} model`,
 				}
 			}
 		}
@@ -165,17 +174,26 @@ export async function refreshGroqModels(controller: Controller, request: EmptyRe
 }
 
 /**
- * Reads cached Groq models from disk
+ * Ensures the cache directory exists and returns its path
  */
-async function readGroqModels(controller: Controller): Promise<Record<string, Partial<OpenRouterModelInfo>> | undefined> {
-	const groqModelsFilePath = path.join(await ensureCacheDirectoryExists(controller), GlobalFileNames.groqModels)
-	const fileExists = await fileExistsAtPath(groqModelsFilePath)
+async function ensureCacheDirectoryExists(controller: Controller): Promise<string> {
+	const cacheDir = path.join(controller.context.globalStorageUri.fsPath, "cache")
+	await fs.mkdir(cacheDir, { recursive: true })
+	return cacheDir
+}
+
+/**
+ * Reads cached Baseten models from disk
+ */
+async function readBasetenModels(controller: Controller): Promise<Record<string, Partial<OpenRouterModelInfo>> | undefined> {
+	const basetenModelsFilePath = path.join(await ensureCacheDirectoryExists(controller), GlobalFileNames.basetenModels)
+	const fileExists = await fileExistsAtPath(basetenModelsFilePath)
 	if (fileExists) {
 		try {
-			const fileContents = await fs.readFile(groqModelsFilePath, "utf8")
+			const fileContents = await fs.readFile(basetenModelsFilePath, "utf8")
 			return JSON.parse(fileContents)
 		} catch (error) {
-			console.error("Error reading cached Groq models:", error)
+			console.error("Error reading cached Baseten models:", error)
 			return undefined
 		}
 	}
@@ -186,42 +204,13 @@ async function readGroqModels(controller: Controller): Promise<Record<string, Pa
  * Validates if a model is suitable for chat completions
  */
 function isValidChatModel(rawModel: any): boolean {
-	// Check if model is active (if the property exists)
-	if (Object.hasOwn(rawModel, "active") && !rawModel.active) {
-		return false
-	}
 	// Filter out non-chat models (whisper, TTS, guard models, etc.)
-	if (
-		rawModel.id.includes("whisper") ||
-		rawModel.id.includes("tts") ||
-		rawModel.id.includes("guard") ||
-		rawModel.id.includes("embedding") ||
-		rawModel.id.includes("moderation") ||
-		rawModel.id.includes("allam")
-	) {
+	if (rawModel.id.includes("whisper") || rawModel.id.includes("tts") || rawModel.id.includes("embedding")) {
 		return false
 	}
 
 	// Check if model supports chat completions
 	if (rawModel.object === "model" && rawModel.id) {
-		return true
-	}
-
-	return false
-}
-
-/**
- * Detects if a model supports image input
- */
-function detectImageSupport(rawModel: any, staticModelInfo?: any): boolean {
-	// Use static info if available
-	if (staticModelInfo?.supportsImages !== undefined) {
-		return staticModelInfo.supportsImages
-	}
-
-	// Detect based on model name patterns
-	const modelId = rawModel.id.toLowerCase()
-	if (modelId.includes("vision") || modelId.includes("maverick") || modelId.includes("scout")) {
 		return true
 	}
 
@@ -239,22 +228,7 @@ function generateModelDescription(rawModel: any, staticModelInfo?: any): string 
 
 	// Generate description based on model characteristics
 	const modelId = rawModel.id
-	const contextWindow = rawModel.context_window || 8192
 	const ownedBy = rawModel.owned_by || "Unknown"
 
-	// Special handling for new models
-	if (modelId.includes("compound")) {
-		return `${ownedBy}'s ${modelId} model with ${contextWindow.toLocaleString()} token context window - Advanced compound architecture`
-	}
-
-	return `${ownedBy} model with ${contextWindow.toLocaleString()} token context window`
-}
-
-/**
- * Ensures the cache directory exists and returns its path
- */
-async function ensureCacheDirectoryExists(controller: Controller): Promise<string> {
-	const cacheDir = path.join(controller.context.globalStorageUri.fsPath, "cache")
-	await fs.mkdir(cacheDir, { recursive: true })
-	return cacheDir
+	return `${ownedBy} model: ${modelId}`
 }

@@ -472,7 +472,7 @@ export const openRouterDefaultModelInfo: ModelInfo = {
 }
 
 // Nutstore
-export const nutstoreDefaultModelId = "google/gemini-2.5-pro-preview"
+export const nutstoreDefaultModelId = "google/gemini-2.5-pro"
 export const nutstoreDefaultModelInfo: ModelInfo = {
 	maxTokens: 65536,
 	contextWindow: 1_048_576,

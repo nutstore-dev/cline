@@ -62,6 +62,7 @@ interface ChatRowProps {
 	inputValue?: string
 	sendMessageFromChatRow?: (text: string, images: string[], files: string[]) => void
 	onSetQuote: (text: string) => void
+	onOpenModelSelector?: () => void
 }
 
 interface QuoteButtonState {
@@ -148,6 +149,7 @@ export const ChatRowContent = memo(
 		inputValue,
 		sendMessageFromChatRow,
 		onSetQuote,
+		onOpenModelSelector,
 	}: ChatRowContentProps) => {
 		const { mcpServers, mcpMarketplaceCatalog, onRelinquishControl, apiConfiguration } = useExtensionState()
 		const [seeNewChangesDisabled, setSeeNewChangesDisabled] = useState(false)
@@ -866,6 +868,7 @@ export const ChatRowContent = memo(
 										errorType="error"
 										apiRequestFailedMessage={apiRequestFailedMessage}
 										apiReqStreamingFailedMessage={apiReqStreamingFailedMessage}
+										onOpenModelSelector={onOpenModelSelector}
 									/>
 								)}
 
@@ -1018,11 +1021,13 @@ export const ChatRowContent = memo(
 							</div>
 						)
 					case "error":
-						return <ErrorRow message={message} errorType="error" />
+						return <ErrorRow message={message} errorType="error" onOpenModelSelector={onOpenModelSelector} />
 					case "diff_error":
-						return <ErrorRow message={message} errorType="diff_error" />
+						return <ErrorRow message={message} errorType="diff_error" onOpenModelSelector={onOpenModelSelector} />
 					case "clineignore_error":
-						return <ErrorRow message={message} errorType="clineignore_error" />
+						return (
+							<ErrorRow message={message} errorType="clineignore_error" onOpenModelSelector={onOpenModelSelector} />
+						)
 					case "checkpoint_created":
 						return (
 							<>
@@ -1182,9 +1187,21 @@ export const ChatRowContent = memo(
 			case "ask":
 				switch (message.ask) {
 					case "mistake_limit_reached":
-						return <ErrorRow message={message} errorType="mistake_limit_reached" />
+						return (
+							<ErrorRow
+								message={message}
+								errorType="mistake_limit_reached"
+								onOpenModelSelector={onOpenModelSelector}
+							/>
+						)
 					case "auto_approval_max_req_reached":
-						return <ErrorRow message={message} errorType="auto_approval_max_req_reached" />
+						return (
+							<ErrorRow
+								message={message}
+								errorType="auto_approval_max_req_reached"
+								onOpenModelSelector={onOpenModelSelector}
+							/>
+						)
 					case "completion_result":
 						if (message.text) {
 							const hasChanges = message.text.endsWith(COMPLETION_RESULT_CHANGES_FLAG) ?? false
@@ -1407,72 +1424,3 @@ export const ChatRowContent = memo(
 		}
 	},
 )
-
-function parseApiError(errorText: string) {
-	if (!errorText) return null
-
-	// 1. 匹配 "Provider API Error Code: Message" 格式
-	const apiErrorMatch = errorText.match(/(\w+)\s+API\s+Error\s+(\d+):\s+(.+?)(?:\n|$)/i)
-	if (apiErrorMatch) {
-		const [, provider, code, message] = apiErrorMatch
-		return {
-			provider: provider,
-			code: parseInt(code),
-			message: message.trim(),
-			type: "api_error",
-		}
-	}
-
-	// 2. 匹配 "Error Code: Message" 格式
-	const errorCodeMatch = errorText.match(/Error\s+(\d+):\s+(.+?)(?:\n|$)/i)
-	if (errorCodeMatch) {
-		const [, code, message] = errorCodeMatch
-		return {
-			code: parseInt(code),
-			message: message.trim(),
-			type: "error_code",
-		}
-	}
-
-	// 3. 匹配 HTTP 状态码格式
-	const httpErrorMatch = errorText.match(/(\d{3})\s+(.+?)(?:\n|$)/i)
-	if (httpErrorMatch) {
-		const [, code, message] = httpErrorMatch
-		return {
-			code: parseInt(code),
-			message: message.trim(),
-			type: "http_error",
-		}
-	}
-
-	// 4. 匹配包含关键词的错误
-	if (/unauthorized|authentication|invalid.*key/i.test(errorText)) {
-		return {
-			code: 401,
-			message: errorText,
-			type: "auth_error",
-		}
-	}
-
-	if (/rate.*limit|too.*many.*requests/i.test(errorText)) {
-		return {
-			code: 429,
-			message: errorText,
-			type: "rate_limit_error",
-		}
-	}
-
-	if (/quota.*exceeded|insufficient.*credits|payment.*required/i.test(errorText)) {
-		return {
-			code: 402,
-			message: errorText,
-			type: "quota_error",
-		}
-	}
-
-	// 5. 默认返回原始错误
-	return {
-		message: errorText,
-		type: "generic_error",
-	}
-}

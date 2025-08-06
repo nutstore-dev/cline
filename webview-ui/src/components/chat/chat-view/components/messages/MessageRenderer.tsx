@@ -68,6 +68,7 @@ export const MessageRenderer: React.FC<MessageRendererProps> = ({
 			inputValue={inputValue}
 			sendMessageFromChatRow={messageHandlers.handleSendMessage}
 			onSetQuote={onSetQuote}
+			onOpenModelSelector={messageHandlers.handleOpenModelSelector}
 		/>
 	)
 }

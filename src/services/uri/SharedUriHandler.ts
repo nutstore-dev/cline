@@ -11,7 +11,7 @@ export class SharedUriHandler {
 	 * @returns Promise<boolean> indicating success (true) or failure (false)
 	 */
 	public static async handleUri(uri: vscode.Uri): Promise<boolean> {
-		console.log("SharedUriHandler: Processing URI:", {
+		console.debug("SharedUriHandler: Processing URI:", {
 			path: uri.path,
 			query: uri.query,
 			scheme: uri.scheme,
@@ -38,7 +38,6 @@ export class SharedUriHandler {
 					return false
 				}
 				case "/nutstore": {
-					console.log("SharedUriHandler: Nutstore callback received:", { path: uri.path, query: JSON.stringify(query) })
 					const s = query.get("s")
 					if (s) {
 						await visibleWebview?.controller.handleNutstoreCallback(s)

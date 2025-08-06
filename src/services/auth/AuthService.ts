@@ -197,7 +197,7 @@ export class AuthService {
 		}
 
 		const callbackHost =
-			(await AuthHandler.getInstance().getCallbackUri()) || `${vscode.env.uriScheme || "vscode"}://saoudrizwan.claude-dev`
+			(await AuthHandler.getInstance().getCallbackUri()) || `${vscode.env.uriScheme || "vscode"}://jianguoyun.cline`
 		const callbackUrl = `${callbackHost}/auth`
 
 		// Use URL object for more graceful query construction

@@ -101,7 +101,7 @@ const NutstoreModelPicker: React.FC<NutstoreModelPickerProps> = ({ isPopup, curr
 	useEffect(() => {
 		const currentModelId = modeFields.nutstoreModelId || nutstoreDefaultModelId
 		setSearchTerm(currentModelId)
-	}, [modeFields.openRouterModelId])
+	}, [modeFields.nutstoreModelId])
 
 	useEffect(() => {
 		const handleClickOutside = (event: MouseEvent) => {
@@ -123,6 +123,7 @@ const NutstoreModelPicker: React.FC<NutstoreModelPickerProps> = ({ isPopup, curr
 					"google/gemini-2.5-pro",
 					"google/gemini-2.5-flash",
 					"google/gemini-2.5-flash-lite-preview-06-17",
+					"anthropic/claude-opus-4.1",
 					"anthropic/claude-sonnet-4",
 					"anthropic/claude-3.7-sonnet",
 					"openai/gpt-4.1",

@@ -24,7 +24,7 @@ const CreditLimitError: React.FC<CreditLimitErrorProps> = ({
 }) => {
 	const { uriScheme } = useExtensionState()
 
-	const callbackUrl = `${uriScheme || "vscode"}://saoudrizwan.claude-dev`
+	const callbackUrl = `${uriScheme || "vscode"}://jianguoyun.cline`
 	const fullPurchaseUrl = new URL(buyCreditsUrl)
 	fullPurchaseUrl.searchParams.set("callback_url", callbackUrl)
 

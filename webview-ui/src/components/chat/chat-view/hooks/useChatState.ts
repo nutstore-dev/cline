@@ -21,6 +21,7 @@ export function useChatState(messages: ClineMessage[]): ChatState {
 	const [secondaryButtonText, setSecondaryButtonText] = useState<string | undefined>("Reject")
 	const [didClickCancel, setDidClickCancel] = useState(false)
 	const [expandedRows, setExpandedRows] = useState<Record<number, boolean>>({})
+	const [openModelSelector, setOpenModelSelector] = useState(false)
 
 	// Refs
 	const textAreaRef = useRef<HTMLTextAreaElement>(null)
@@ -54,6 +55,11 @@ export function useChatState(messages: ClineMessage[]): ChatState {
 		setIsTextAreaFocused(isFocused)
 	}, [])
 
+	// Handle model selector open change
+	const handleOpenModelSelector = useCallback(() => {
+		setOpenModelSelector(true)
+	}, [])
+
 	return {
 		// State values
 		inputValue,
@@ -78,6 +84,8 @@ export function useChatState(messages: ClineMessage[]): ChatState {
 		setDidClickCancel,
 		expandedRows,
 		setExpandedRows,
+		openModelSelector,
+		setOpenModelSelector,
 
 		// Refs
 		textAreaRef,
@@ -92,5 +100,6 @@ export function useChatState(messages: ClineMessage[]): ChatState {
 		handleFocusChange,
 		clearExpandedRows,
 		resetState,
+		handleOpenModelSelector,
 	}
 }

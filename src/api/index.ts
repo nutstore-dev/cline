@@ -70,7 +70,7 @@ function createHandlerForProvider(
 			})
 		case "nutstore":
 			return new NutstoreHandler({
-				...options,
+				nutstoreAccessToken: options.nutstoreAccessToken,
 				nutstoreModelId: mode === "plan" ? options.planModeNutstoreModelId : options.actModeNutstoreModelId,
 				nutstoreModelInfo: mode === "plan" ? options.planModeNutstoreModelInfo : options.actModeNutstoreModelInfo,
 				nutstoreProviderSorting: options.nutstoreProviderSorting,

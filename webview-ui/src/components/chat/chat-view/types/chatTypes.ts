@@ -42,6 +42,8 @@ export interface ChatState {
 	setDidClickCancel: React.Dispatch<React.SetStateAction<boolean>>
 	expandedRows: Record<number, boolean>
 	setExpandedRows: React.Dispatch<React.SetStateAction<Record<number, boolean>>>
+	openModelSelector: boolean
+	setOpenModelSelector: React.Dispatch<React.SetStateAction<boolean>>
 
 	// Refs
 	textAreaRef: React.RefObject<HTMLTextAreaElement>
@@ -56,6 +58,7 @@ export interface ChatState {
 	handleFocusChange: (isFocused: boolean) => void
 	clearExpandedRows: () => void
 	resetState: () => void
+	handleOpenModelSelector: () => void
 
 	// Scroll-related state (will be moved to scroll hook)
 	showScrollToBottom?: boolean
@@ -72,6 +75,7 @@ export interface MessageHandlers {
 	handleSecondaryButtonClick: (text?: string, images?: string[], files?: string[]) => Promise<void>
 	handleTaskCloseButtonClick: () => void
 	startNewTask: () => Promise<void>
+	handleOpenModelSelector: () => void
 }
 
 /**

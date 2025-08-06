@@ -612,7 +612,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Register the openWalkthrough command handler
 	context.subscriptions.push(
 		vscode.commands.registerCommand("cline.openWalkthrough", async () => {
-			await vscode.commands.executeCommand("workbench.action.openWalkthrough", "saoudrizwan.claude-dev#ClineWalkthrough")
+			await vscode.commands.executeCommand("workbench.action.openWalkthrough", "jianguoyun.cline#ClineWalkthrough")
 			telemetryService.captureButtonClick("command_openWalkthrough")
 		}),
 	)

@@ -24,6 +24,7 @@ export function useMessageHandlers(messages: ClineMessage[], chatState: ChatStat
 		setDidClickCancel,
 		clineAsk,
 		lastMessage,
+		handleOpenModelSelector,
 	} = chatState
 
 	// Handle sending a message
@@ -311,5 +312,6 @@ export function useMessageHandlers(messages: ClineMessage[], chatState: ChatStat
 		handleSecondaryButtonClick,
 		handleTaskCloseButtonClick,
 		startNewTask,
+		handleOpenModelSelector,
 	}
 }

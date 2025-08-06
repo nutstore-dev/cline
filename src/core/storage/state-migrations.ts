@@ -432,6 +432,12 @@ export async function migrateLegacyApiConfigurationToModeSpecific(context: vscod
 			if (openRouterModelId !== undefined) {
 				await context.globalState.update("actModeOpenRouterModelId", openRouterModelId)
 			}
+			if (nutstoreModelId !== undefined) {
+				await context.globalState.update("actModeNutstoreModelId", nutstoreModelId)
+			}
+			if (nutstoreModelInfo !== undefined) {
+				await context.globalState.update("actModeNutstoreModelInfo", nutstoreModelInfo)
+			}
 			if (openAiModelId !== undefined) {
 				await context.globalState.update("actModeOpenAiModelId", openAiModelId)
 			}
@@ -537,6 +543,7 @@ export async function migrateWelcomeViewCompleted(context: vscode.ExtensionConte
 				? [
 						config.apiKey,
 						config.openRouterApiKey,
+						config.nutstoreAccessToken,
 						config.awsRegion,
 						config.vertexProjectId,
 						config.openAiApiKey,

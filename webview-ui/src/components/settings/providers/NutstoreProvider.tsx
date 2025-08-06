@@ -1,4 +1,4 @@
-import { VSCodeCheckbox, VSCodeDropdown, VSCodeOption, VSCodeLink } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeCheckbox, VSCodeDropdown, VSCodeOption, VSCodeLink, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import { DebouncedTextField } from "../common/DebouncedTextField"
 import { DropdownContainer } from "../common/ModelSelector"
 import { useState } from "react"
@@ -77,19 +77,11 @@ export const NutstoreProvider = ({ showModelOptions, isPopup, currentMode }: Nut
 	return (
 		<div>
 			<div>
-				<DebouncedTextField
-					initialValue={apiConfiguration?.nutstoreAccessToken || ""}
-					onChange={(value) => handleFieldChange("nutstoreAccessToken", value)}
+				<VSCodeTextField
+					value={apiConfiguration?.nutstoreAccessToken}
 					style={{ width: "100%" }}
 					type="password"
-					disabled>
-					<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
-						<span style={{ fontWeight: 500 }}>Nutstore AccessToken</span>
-						{apiConfiguration?.nutstoreAccessToken && (
-							<NutstoreBalanceDisplay apiKey={apiConfiguration.nutstoreAccessToken} />
-						)}
-					</div>
-				</DebouncedTextField>
+					disabled></VSCodeTextField>
 				{!apiConfiguration?.nutstoreAccessToken && (
 					<VSCodeButtonLink href={authUrl} style={{ margin: "5px 0 0 0" }} appearance="secondary">
 						Get Nutstore AccessToken

@@ -36,6 +36,8 @@ export const InputSection: React.FC<InputSectionProps> = ({
 		setSelectedFiles,
 		textAreaRef,
 		handleFocusChange,
+		openModelSelector,
+		setOpenModelSelector,
 	} = chatState
 
 	const { isAtBottom, scrollToBottomAuto } = scrollBehavior
@@ -67,6 +69,8 @@ export const InputSection: React.FC<InputSectionProps> = ({
 				onSend={() => messageHandlers.handleSendMessage(inputValue, selectedImages, selectedFiles)}
 				onSelectFilesAndImages={selectFilesAndImages}
 				shouldDisableFilesAndImages={shouldDisableFilesAndImages}
+				openModelSelector={openModelSelector}
+				onModelSelectorOpenChange={setOpenModelSelector}
 				onHeightChange={() => {
 					if (isAtBottom) {
 						scrollToBottomAuto()

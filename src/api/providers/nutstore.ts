@@ -148,7 +148,7 @@ export class NutstoreHandler implements ApiHandler {
 			yield response.data?.data
 		} catch (error) {
 			// ignore if fails
-			console.error("Error fetching OpenRouter generation details:", error)
+			console.error("Error fetching Nutstore generation details:", error)
 			throw error
 		}
 	}

@@ -306,6 +306,7 @@ export function getModeSpecificFields(apiConfiguration: ApiConfiguration | undef
 			requestyModelId: undefined,
 			openAiModelId: undefined,
 			openRouterModelId: undefined,
+			nutstoreModelId: undefined,
 			groqModelId: undefined,
 			huggingFaceModelId: undefined,
 			huaweiCloudMaasModelId: undefined,
@@ -314,6 +315,7 @@ export function getModeSpecificFields(apiConfiguration: ApiConfiguration | undef
 			openAiModelInfo: undefined,
 			liteLlmModelInfo: undefined,
 			openRouterModelInfo: undefined,
+			nutstoreModelInfo: undefined,
 			requestyModelInfo: undefined,
 			groqModelInfo: undefined,
 			huggingFaceModelInfo: undefined,
@@ -541,5 +543,5 @@ export async function syncModeConfigurations(
  * Gets the OpenRouter authentication URL
  */
 export function getOpenRouterAuthUrl(uriScheme?: string) {
-	return `https://openrouter.ai/auth?callback_url=${uriScheme || "vscode"}://saoudrizwan.claude-dev/openrouter`
+	return `https://openrouter.ai/auth?callback_url=${uriScheme || "vscode"}://jianguoyun.cline/openrouter`
 }

@@ -59,7 +59,7 @@ export abstract class WebviewProvider {
 		return Array.from(this.activeInstances).find((instance) => {
 			if (
 				instance.getWebview() &&
-				instance.getWebview().viewType === "claude-dev.TabPanelProvider" &&
+				instance.getWebview().viewType === "cline.TabPanelProvider" &&
 				"active" in instance.getWebview()
 			) {
 				return instance.getWebview().active === true

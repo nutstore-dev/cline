@@ -102,7 +102,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				const message = previousVersion
 					? `Cline has been updated to v${currentVersion}`
 					: `Welcome to Cline v${currentVersion}`
-				await vscode.commands.executeCommand("claude-dev.SidebarProvider.focus")
+				await vscode.commands.executeCommand("cline.SidebarProvider.focus")
 				await new Promise((resolve) => setTimeout(resolve, 200))
 				HostProvider.window.showMessage({
 					type: ShowMessageType.INFORMATION,
@@ -555,7 +555,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				panelView.reveal(panelView.viewColumn)
 			} else if (!activeWebviewProvider) {
 				// No webview is currently visible, try to activate the sidebar
-				await vscode.commands.executeCommand("claude-dev.SidebarProvider.focus")
+				await vscode.commands.executeCommand("cline.SidebarProvider.focus")
 				await new Promise((resolve) => setTimeout(resolve, 200)) // Allow time for focus
 				activeWebviewProvider = WebviewProvider.getSidebarInstance()
 
@@ -657,7 +657,7 @@ function maybeSetupHostProviders(context: ExtensionContext) {
 		context.subscriptions.push(outputChannel)
 
 		const getCallbackUri = async function () {
-			return `${vscode.env.uriScheme || "vscode"}://saoudrizwan.claude-dev`
+			return `${vscode.env.uriScheme || "vscode"}://jianguoyun.cline`
 		}
 		HostProvider.initialize(createWebview, createDiffView, vscodeHostBridgeClient, outputChannel.appendLine, getCallbackUri)
 	}

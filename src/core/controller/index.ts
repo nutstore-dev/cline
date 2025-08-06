@@ -566,7 +566,10 @@ export class Controller {
 			this.task.api = buildApiHandler({ ...updatedConfig, taskId: this.task.taskId }, currentMode)
 		}
 
-		vscode.window.showInformationMessage("坚果云 AccessToken 已获取，可以继续使用。")
+		HostProvider.window.showMessage({
+			type: ShowMessageType.INFORMATION,
+			message: "坚果云 AccessToken 已获取，可以继续使用。",
+		})
 		if (this.nutstoreAccessTokenRefreshTimer) {
 			clearInterval(this.nutstoreAccessTokenRefreshTimer)
 		}

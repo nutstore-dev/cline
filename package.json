@@ -496,8 +496,5 @@
 		"vscode-uri": "^3.1.0",
 		"web-tree-sitter": "^0.22.6",
 		"zod": "^3.24.2"
-	},
-	"enabledApiProposals": [
-		"extensionRuntime"
-	]
+	}
 }

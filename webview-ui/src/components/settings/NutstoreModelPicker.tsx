@@ -120,6 +120,8 @@ const NutstoreModelPicker: React.FC<NutstoreModelPickerProps> = ({ isPopup, curr
 		const unfilteredModelIds = Object.keys(openRouterModels)
 			.filter((id) =>
 				[
+					"qwen/qwen3-coder",
+					"moonshotai/kimi-k2",
 					"google/gemini-2.5-pro",
 					"google/gemini-2.5-flash",
 					"google/gemini-2.5-flash-lite-preview-06-17",

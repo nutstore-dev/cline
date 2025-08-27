@@ -128,8 +128,7 @@ const NutstoreModelPicker: React.FC<NutstoreModelPickerProps> = ({ isPopup, curr
 					"anthropic/claude-opus-4.1",
 					"anthropic/claude-sonnet-4",
 					"anthropic/claude-3.7-sonnet",
-					"openai/gpt-4.1",
-					"openai/o3",
+					"openai/gpt-5",
 				].includes(id),
 			)
 			.sort((a, b) => a.localeCompare(b))

@@ -1,12 +1,12 @@
-import { memo } from "react"
-import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
 import { ClineMessage } from "@shared/ExtensionMessage"
-import { ClineError, ClineErrorType } from "../../../../src/services/error/ClineError"
+import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
+import { memo } from "react"
 import CreditLimitError from "@/components/chat/CreditLimitError"
 import { handleSignIn, useClineAuth } from "@/context/ClineAuthContext"
 import { useExtensionState } from "@/context/ExtensionStateContext"
+import { ClineError, ClineErrorType } from "../../../../src/services/error/ClineError"
 
-const errorColor = "var(--vscode-errorForeground)"
+const _errorColor = "var(--vscode-errorForeground)"
 
 interface ErrorRowProps {
 	message: ClineMessage
@@ -28,10 +28,11 @@ const ErrorRow = memo(
 				case "auto_approval_max_req_reached":
 					// Handle API request errors with special error parsing
 					if (apiRequestFailedMessage || apiReqStreamingFailedMessage) {
+						// FIXME: ClineError parsing should not be applied to non-Cline providers, but it seems we're using clineErrorMessage below in the default error display
 						const clineError = ClineError.parse(apiRequestFailedMessage || apiReqStreamingFailedMessage)
 						const clineErrorMessage = clineError?.message
 						const requestId = clineError?._error?.request_id
-						const isClineProvider = clineError?.providerId === "cline"
+						const isClineProvider = clineError?.providerId === "cline" // FIXME: since we are modifying backend to return generic error, we need to make sure we're not expecting providerId here
 
 						if (clineError) {
 							if (clineError.isErrorType(ClineErrorType.Balance)) {
@@ -39,10 +40,10 @@ const ErrorRow = memo(
 								return (
 									<CreditLimitError
 										currentBalance={errorDetails?.current_balance}
-										totalSpent={errorDetails?.total_spent}
-										totalPromotions={errorDetails?.total_promotions}
 										message={errorDetails?.message}
-										buyCreditsUrl={errorDetails?.buy_credits_url}
+										totalPromotions={errorDetails?.total_promotions}
+										totalSpent={errorDetails?.total_spent}
+										// buyCreditsUrl={errorDetails?.buy_credits_url}
 									/>
 								)
 							}
@@ -68,8 +69,8 @@ const ErrorRow = memo(
 										<br />
 										It seems like you're having Windows PowerShell issues, please see this{" "}
 										<a
-											href="https://github.com/cline/cline/wiki/TroubleShooting-%E2%80%90-%22PowerShell-is-not-recognized-as-an-internal-or-external-command%22"
-											className="underline text-inherit">
+											className="underline text-inherit"
+											href="https://github.com/cline/cline/wiki/TroubleShooting-%E2%80%90-%22PowerShell-is-not-recognized-as-an-internal-or-external-command%22">
 											troubleshooting guide
 										</a>
 										.
@@ -79,17 +80,17 @@ const ErrorRow = memo(
 									<>
 										<br />
 										<br />
-										{/* Handle different auth error scenarios */}
+										{/* The user is signed in or not using cline provider */}
 										{isClineProvider ? (
-											<VSCodeButton onClick={handleSignIn} className="w-full mb-4">
+											<VSCodeButton className="w-full mb-4" onClick={handleSignIn}>
 												Sign in to Cline
 											</VSCodeButton>
 										) : (
 											<div className="flex flex-col gap-2">
 												<VSCodeButton
-													onClick={onOpenModelSelector}
 													className="w-full"
-													disabled={!onOpenModelSelector}>
+													disabled={!onOpenModelSelector}
+													onClick={onOpenModelSelector}>
 													Update API Key
 												</VSCodeButton>
 												<span className="text-xs text-[var(--vscode-descriptionForeground)] text-center">

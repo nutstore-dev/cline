@@ -1,14 +1,15 @@
-import { describe, it, beforeEach, afterEach } from "mocha"
-import { expect } from "chai"
-import * as sinon from "sinon"
-import { handleGrpcRequest, handleGrpcRequestCancel, getRequestRegistry } from "./grpc-handler"
 import { Controller } from "@core/controller"
-import { GrpcRequest, GrpcCancel } from "@shared/WebviewMessage"
 import { serviceHandlers } from "@generated/hosts/vscode/protobus-services"
+import { GrpcCancel, GrpcRequest } from "@shared/WebviewMessage"
+import { expect } from "chai"
+import { afterEach, beforeEach, describe, it } from "mocha"
+import * as sinon from "sinon"
+import { getRequestRegistry, handleGrpcRequest, handleGrpcRequestCancel } from "./grpc-handler"
 
 describe("grpc-handler", () => {
 	let sandbox: sinon.SinonSandbox
-	let mockController: sinon.SinonStubbedInstance<Controller>
+	let mockController: Controller
+	let mockPostMessageToWebview: sinon.SinonStub
 
 	let mockUnaryHandler: sinon.SinonStub
 	let mockUnaryFailingHandler: sinon.SinonStub
@@ -22,9 +23,8 @@ describe("grpc-handler", () => {
 		sandbox = sinon.createSandbox()
 
 		// Create a mock controller
-		mockController = {
-			postMessageToWebview: sandbox.stub().resolves(),
-		} as any
+		mockController = {} as any
+		mockPostMessageToWebview = sandbox.stub().resolves()
 
 		// Create mock service handlers
 		mockUnaryHandler = sandbox.stub().resolves(mockResponse)
@@ -54,7 +54,7 @@ describe("grpc-handler", () => {
 					is_streaming: false,
 				}
 
-				await handleGrpcRequest(mockController as any, request)
+				await handleGrpcRequest(mockController, mockPostMessageToWebview, request)
 
 				// Verify the handler was called
 				expect(mockUnaryHandler.calledOnce).to.be.true
@@ -62,8 +62,8 @@ describe("grpc-handler", () => {
 				expect(mockUnaryHandler.firstCall.args[1]).to.deep.equal({ input: "test" })
 
 				// Verify the response was sent
-				expect(mockController.postMessageToWebview.calledOnce).to.be.true
-				const sentMessage = mockController.postMessageToWebview.firstCall.args[0]
+				expect(mockPostMessageToWebview.calledOnce).to.be.true
+				const sentMessage = mockPostMessageToWebview.firstCall.args[0]
 				expect(sentMessage).to.deep.equal({
 					type: "grpc_response",
 					grpc_response: {
@@ -82,11 +82,11 @@ describe("grpc-handler", () => {
 					is_streaming: false,
 				}
 
-				await handleGrpcRequest(mockController as any, request)
+				await handleGrpcRequest(mockController, mockPostMessageToWebview, request)
 
 				// Verify the error response was sent
-				expect(mockController.postMessageToWebview.calledOnce).to.be.true
-				const sentMessage = mockController.postMessageToWebview.firstCall.args[0]
+				expect(mockPostMessageToWebview.calledOnce).to.be.true
+				const sentMessage = mockPostMessageToWebview.firstCall.args[0]
 				expect(sentMessage).to.deep.equal({
 					type: "grpc_response",
 					grpc_response: {
@@ -106,11 +106,11 @@ describe("grpc-handler", () => {
 					is_streaming: false,
 				}
 
-				await handleGrpcRequest(mockController as any, request)
+				await handleGrpcRequest(mockController, mockPostMessageToWebview, request)
 
 				// Verify the error response was sent
-				expect(mockController.postMessageToWebview.calledOnce).to.be.true
-				const sentMessage = mockController.postMessageToWebview.firstCall.args[0]
+				expect(mockPostMessageToWebview.calledOnce).to.be.true
+				const sentMessage = mockPostMessageToWebview.firstCall.args[0]
 				expect(sentMessage.type).to.equal("grpc_response")
 				expect(sentMessage.grpc_response?.error).to.include("Unknown service: UnknownService")
 				expect(sentMessage.grpc_response?.request_id).to.equal("test-789")
@@ -125,11 +125,11 @@ describe("grpc-handler", () => {
 					is_streaming: false,
 				}
 
-				await handleGrpcRequest(mockController as any, request)
+				await handleGrpcRequest(mockController, mockPostMessageToWebview, request)
 
 				// Verify the error response was sent
-				expect(mockController.postMessageToWebview.calledOnce).to.be.true
-				const sentMessage = mockController.postMessageToWebview.firstCall.args[0]
+				expect(mockPostMessageToWebview.calledOnce).to.be.true
+				const sentMessage = mockPostMessageToWebview.firstCall.args[0]
 				expect(sentMessage.type).to.equal("grpc_response")
 				expect(sentMessage.grpc_response?.error).to.include("Unknown rpc: cline.TestService.unknownMethod")
 				expect(sentMessage.grpc_response?.request_id).to.equal("test-999")
@@ -148,14 +148,16 @@ describe("grpc-handler", () => {
 
 				// Reset the mock and set up the handler using callsFake
 				mockStreamingHandler.reset()
-				mockStreamingHandler.callsFake(async (controller: any, message: any, responseStream: any, requestId: string) => {
-					// Simulate streaming multiple messages
-					await responseStream({ value: 1 }, false, 0)
-					await responseStream({ value: 2 }, false, 1)
-					await responseStream({ value: 3 }, true, 2) // Last message
-				})
+				mockStreamingHandler.callsFake(
+					async (_controller: any, _message: any, responseStream: any, _requestId: string) => {
+						// Simulate streaming multiple messages
+						await responseStream({ value: 1 }, false, 0)
+						await responseStream({ value: 2 }, false, 1)
+						await responseStream({ value: 3 }, true, 2) // Last message
+					},
+				)
 
-				await handleGrpcRequest(mockController as any, request)
+				await handleGrpcRequest(mockController, mockPostMessageToWebview, request)
 
 				// Verify the handler was called
 				expect(mockStreamingHandler.calledOnce).to.be.true
@@ -164,10 +166,10 @@ describe("grpc-handler", () => {
 				expect(mockStreamingHandler.firstCall.args[3]).to.equal("stream-123")
 
 				// Verify all streaming responses were sent
-				expect(mockController.postMessageToWebview.callCount).to.equal(3)
+				expect(mockPostMessageToWebview.callCount).to.equal(3)
 
 				// Check all responses
-				expect(mockController.postMessageToWebview.firstCall.args[0]).to.deep.equal({
+				expect(mockPostMessageToWebview.firstCall.args[0]).to.deep.equal({
 					type: "grpc_response",
 					grpc_response: {
 						message: { value: 1 },
@@ -176,7 +178,7 @@ describe("grpc-handler", () => {
 						sequence_number: 0,
 					},
 				})
-				expect(mockController.postMessageToWebview.secondCall.args[0]).to.deep.equal({
+				expect(mockPostMessageToWebview.secondCall.args[0]).to.deep.equal({
 					type: "grpc_response",
 					grpc_response: {
 						message: { value: 2 },
@@ -185,7 +187,7 @@ describe("grpc-handler", () => {
 						sequence_number: 1,
 					},
 				})
-				expect(mockController.postMessageToWebview.thirdCall.args[0]).to.deep.equal({
+				expect(mockPostMessageToWebview.thirdCall.args[0]).to.deep.equal({
 					type: "grpc_response",
 					grpc_response: {
 						message: { value: 3 },
@@ -205,11 +207,11 @@ describe("grpc-handler", () => {
 					is_streaming: true,
 				}
 
-				await handleGrpcRequest(mockController as any, request)
+				await handleGrpcRequest(mockController, mockPostMessageToWebview, request)
 
 				// Verify the error response was sent
-				expect(mockController.postMessageToWebview.calledOnce).to.be.true
-				const sentMessage = mockController.postMessageToWebview.firstCall.args[0]
+				expect(mockPostMessageToWebview.calledOnce).to.be.true
+				const sentMessage = mockPostMessageToWebview.firstCall.args[0]
 				expect(sentMessage).to.deep.equal({
 					type: "grpc_response",
 					grpc_response: {
@@ -236,23 +238,25 @@ describe("grpc-handler", () => {
 
 				// Reset the mock and set up the handler to throw an error after being called
 				mockStreamingHandler.reset()
-				mockStreamingHandler.callsFake(async (controller: any, message: any, responseStream: any, requestId: string) => {
-					// Send first message successfully
-					await responseStream({ value: "first" }, false, 0)
-					// Throw an error
-					throw new Error("Mid-stream error")
-				})
+				mockStreamingHandler.callsFake(
+					async (_controller: any, _message: any, responseStream: any, _requestId: string) => {
+						// Send first message successfully
+						await responseStream({ value: "first" }, false, 0)
+						// Throw an error
+						throw new Error("Mid-stream error")
+					},
+				)
 
-				await handleGrpcRequest(mockController as any, request)
+				await handleGrpcRequest(mockController, mockPostMessageToWebview, request)
 
 				// Verify the handler was called
 				expect(mockStreamingHandler.calledOnce).to.be.true
 
 				// Verify that we got the first message and then the error
-				expect(mockController.postMessageToWebview.callCount).to.equal(2)
+				expect(mockPostMessageToWebview.callCount).to.equal(2)
 
 				// Check first message was sent successfully
-				expect(mockController.postMessageToWebview.firstCall.args[0]).to.deep.equal({
+				expect(mockPostMessageToWebview.firstCall.args[0]).to.deep.equal({
 					type: "grpc_response",
 					grpc_response: {
 						message: { value: "first" },
@@ -263,7 +267,7 @@ describe("grpc-handler", () => {
 				})
 
 				// Check error response was sent
-				expect(mockController.postMessageToWebview.secondCall.args[0]).to.deep.equal({
+				expect(mockPostMessageToWebview.secondCall.args[0]).to.deep.equal({
 					type: "grpc_response",
 					grpc_response: {
 						error: "Mid-stream error",
@@ -280,12 +284,12 @@ describe("grpc-handler", () => {
 				await responseStream({ value: "after-error" }, false, 1)
 
 				// Verify we now have 3 total calls (first message, error, after-error message)
-				expect(mockController.postMessageToWebview.callCount).to.equal(3)
+				expect(mockPostMessageToWebview.callCount).to.equal(3)
 
 				// Verify the message after error was still sent
 				// (In a real scenario, the handler would have stopped due to the error,
 				// but this tests that the responseStream function itself still works)
-				expect(mockController.postMessageToWebview.thirdCall.args[0]).to.deep.equal({
+				expect(mockPostMessageToWebview.thirdCall.args[0]).to.deep.equal({
 					type: "grpc_response",
 					grpc_response: {
 						message: { value: "after-error" },
@@ -308,14 +312,14 @@ describe("grpc-handler", () => {
 					request_id: "cancel-123",
 				}
 
-				await handleGrpcRequestCancel(mockController as any, cancelRequest)
+				await handleGrpcRequestCancel(mockPostMessageToWebview, cancelRequest)
 
 				// Verify the cleanup was called
 				expect(cleanupStub.calledOnce).to.be.true
 
 				// Verify the cancellation confirmation was sent
-				expect(mockController.postMessageToWebview.calledOnce).to.be.true
-				const sentMessage = mockController.postMessageToWebview.firstCall.args[0]
+				expect(mockPostMessageToWebview.calledOnce).to.be.true
+				const sentMessage = mockPostMessageToWebview.firstCall.args[0]
 				expect(sentMessage).to.deep.equal({
 					type: "grpc_response",
 					grpc_response: {
@@ -334,10 +338,10 @@ describe("grpc-handler", () => {
 					request_id: "non-existent",
 				}
 
-				await handleGrpcRequestCancel(mockController as any, cancelRequest)
+				await handleGrpcRequestCancel(mockPostMessageToWebview, cancelRequest)
 
 				// Verify no message was sent (request not found)
-				expect(mockController.postMessageToWebview.called).to.be.false
+				expect(mockPostMessageToWebview.called).to.be.false
 			})
 
 			it("should handle cleanup errors gracefully", async () => {
@@ -351,13 +355,13 @@ describe("grpc-handler", () => {
 				}
 
 				// Should not throw
-				await handleGrpcRequestCancel(mockController as any, cancelRequest)
+				await handleGrpcRequestCancel(mockPostMessageToWebview, cancelRequest)
 
 				// Verify the cleanup was attempted
 				expect(cleanupStub.calledOnce).to.be.true
 
 				// Verify the cancellation confirmation was still sent
-				expect(mockController.postMessageToWebview.calledOnce).to.be.true
+				expect(mockPostMessageToWebview.calledOnce).to.be.true
 
 				// Verify the request was removed despite the error
 				expect(registry.hasRequest("cancel-error")).to.be.false
@@ -368,28 +372,28 @@ describe("grpc-handler", () => {
 			it("should handle concurrent requests", async () => {
 				// Set up handlers
 				mockUnaryHandler.resolves({ result: "unary" })
-				mockStreamingHandler.callsFake(async (controller: any, message: any, responseStream: any) => {
+				mockStreamingHandler.callsFake(async (_controller: any, _message: any, responseStream: any) => {
 					await responseStream({ value: "stream1" }, false, 0)
 					await responseStream({ value: "stream2" }, true, 1)
 				})
 
 				// Send multiple requests concurrently
 				const requests = [
-					handleGrpcRequest(mockController as any, {
+					handleGrpcRequest(mockController, mockPostMessageToWebview, {
 						service: serviceName,
 						method: "testUnary",
 						message: { id: 1 },
 						request_id: "concurrent-1",
 						is_streaming: false,
 					}),
-					handleGrpcRequest(mockController as any, {
+					handleGrpcRequest(mockController, mockPostMessageToWebview, {
 						service: serviceName,
 						method: "testStreaming",
 						message: { id: 2 },
 						request_id: "concurrent-2",
 						is_streaming: true,
 					}),
-					handleGrpcRequest(mockController as any, {
+					handleGrpcRequest(mockController, mockPostMessageToWebview, {
 						service: serviceName,
 						method: "testUnary",
 						message: { id: 3 },
@@ -405,7 +409,7 @@ describe("grpc-handler", () => {
 				expect(mockStreamingHandler.callCount).to.equal(1)
 
 				// Verify all responses were sent (2 unary + 2 streaming)
-				expect(mockController.postMessageToWebview.callCount).to.equal(4)
+				expect(mockPostMessageToWebview.callCount).to.equal(4)
 			})
 		})
 	})

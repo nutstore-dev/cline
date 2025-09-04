@@ -2572,7 +2572,7 @@ export class Task {
 
 			return didEndLoop // will always be false for now
 		} catch (_error) {
-			console.error(error)
+			console.error(_error)
 			// this should never happen since the only thing that can throw an error is the attemptApiRequest, which is wrapped in a try catch that sends an ask where if noButtonClicked, will clear current task and destroy this instance. However to avoid unhandled promise rejection, we will end this loop which will end execution of this instance (see startTask)
 			return true // needs to be true so parent loop knows to end task
 		}

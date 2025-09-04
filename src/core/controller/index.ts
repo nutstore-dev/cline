@@ -64,6 +64,20 @@ export class Controller {
 			.initialize()
 			.then(() => {
 				this.authService.restoreRefreshTokenAndRetrieveAuthInfo()
+
+				this.cacheService.setGlobalState("autoApprovalSettings", {
+					version: 0,
+					enabled: false,
+					actions: {
+						readFiles: false,
+						editFiles: false,
+						useBrowser: false,
+						useMcp: false,
+					},
+					maxRequests: 0,
+					enableNotifications: false,
+					favorites: [],
+				})
 			})
 			.catch((error) => {
 				console.error("CRITICAL: Failed to initialize CacheService - extension may not function properly:", error)
@@ -99,8 +113,6 @@ export class Controller {
 		cleanupLegacyCheckpoints(this.context.globalStorageUri.fsPath).catch((error) => {
 			console.error("Failed to cleanup legacy checkpoints:", error)
 		})
-
-		updateGlobalState(this.context, "autoApprovalSettings", { enabled: false })
 
 		if (!this.nutstoreAccessTokenRefreshTimer) {
 			this.nutstoreAccessTokenRefreshTimer = setInterval(() => {
@@ -499,7 +511,7 @@ export class Controller {
 
 		await this.postStateToWebview()
 		if (this.task) {
-			this.task.api = buildApiHandler({ ...updatedConfig, ulid: this.task.ulid, taskId: this.task.taskId }, currentMode)
+			this.task.api = buildApiHandler({ ...updatedConfig, ulid: this.task.ulid }, currentMode)
 		}
 		// Dont send settingsButtonClicked because its bad ux if user is on welcome
 	}

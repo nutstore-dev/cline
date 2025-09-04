@@ -572,7 +572,7 @@ export class CacheService {
 		try {
 			await Promise.all(
 				Array.from(keys).map((key) => {
-					const value = this.globalStateCache[key]
+					const value = this.globalStateCache[key as keyof GlobalState]
 					return this.context.globalState.update(key, value)
 				}),
 			)

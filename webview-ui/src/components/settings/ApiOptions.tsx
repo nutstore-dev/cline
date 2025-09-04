@@ -223,10 +223,6 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 				<NutstoreProvider currentMode={currentMode} isPopup={isPopup} showModelOptions={showModelOptions} />
 			)}
 
-			{apiConfiguration && selectedProvider === "nutstore" && (
-				<NutstoreProvider currentMode={currentMode} isPopup={isPopup} showModelOptions={showModelOptions} />
-			)}
-
 			{apiConfiguration && selectedProvider === "deepseek" && (
 				<DeepSeekProvider currentMode={currentMode} isPopup={isPopup} showModelOptions={showModelOptions} />
 			)}

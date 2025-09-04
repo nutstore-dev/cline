@@ -1,16 +1,17 @@
-import { VSCodeCheckbox, VSCodeDropdown, VSCodeOption, VSCodeLink, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
+import { createNutOAuthUrl } from "@nutstore/sso-js"
+import { Mode } from "@shared/storage/types"
+import { VSCodeCheckbox, VSCodeDropdown, VSCodeLink, VSCodeOption, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
+import { useState } from "react"
+import { useMount } from "react-use"
+import { useExtensionState } from "@/context/ExtensionStateContext"
+import VSCodeButtonLink from "../../common/VSCodeButtonLink"
+import { useOpenRouterKeyInfo } from "../../ui/hooks/useOpenRouterKeyInfo"
 import { DebouncedTextField } from "../common/DebouncedTextField"
 import { DropdownContainer } from "../common/ModelSelector"
-import { useState } from "react"
-import { useOpenRouterKeyInfo } from "../../ui/hooks/useOpenRouterKeyInfo"
-import VSCodeButtonLink from "../../common/VSCodeButtonLink"
 import NutstoreModelPicker, { OPENROUTER_MODEL_PICKER_Z_INDEX } from "../NutstoreModelPicker"
 import { formatPrice } from "../utils/pricingUtils"
-import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useApiConfigurationHandlers } from "../utils/useApiConfigurationHandlers"
-import { Mode } from "@shared/storage/types"
-import { useMount } from "react-use"
-import { createNutOAuthUrl } from "@nutstore/sso-js"
+
 /**
  * Component to display OpenRouter balance information
  */
@@ -33,7 +34,6 @@ const NutstoreBalanceDisplay = ({ apiKey }: { apiKey: string }) => {
 	return (
 		<VSCodeLink
 			href="https://openrouter.ai/settings/keys"
-			title={`Remaining balance: ${formattedBalance}\nLimit: ${formatPrice(keyInfo.limit)}\nUsage: ${formatPrice(keyInfo.usage)}`}
 			style={{
 				fontSize: "12px",
 				color: "var(--vscode-foreground)",
@@ -41,7 +41,8 @@ const NutstoreBalanceDisplay = ({ apiKey }: { apiKey: string }) => {
 				fontWeight: 500,
 				paddingLeft: 4,
 				cursor: "pointer",
-			}}>
+			}}
+			title={`Remaining balance: ${formattedBalance}\nLimit: ${formatPrice(keyInfo.limit)}\nUsage: ${formatPrice(keyInfo.usage)}`}>
 			Balance: {formattedBalance}
 		</VSCodeLink>
 	)
@@ -78,15 +79,13 @@ export const NutstoreProvider = ({ showModelOptions, isPopup, currentMode }: Nut
 		<div>
 			<div>
 				<VSCodeTextField
-					value={apiConfiguration?.nutstoreAccessToken}
+					disabled
 					style={{ width: "100%" }}
 					type="password"
-					disabled></VSCodeTextField>
-				{!apiConfiguration?.nutstoreAccessToken && (
-					<VSCodeButtonLink href={authUrl} style={{ margin: "5px 0 0 0" }} appearance="secondary">
-						Get Nutstore AccessToken
-					</VSCodeButtonLink>
-				)}
+					value={apiConfiguration?.nutstoreAccessToken}></VSCodeTextField>
+				<VSCodeButtonLink appearance="secondary" href={authUrl} style={{ margin: "5px 0 0 0" }}>
+					Get Nutstore AccessToken
+				</VSCodeButtonLink>
 				<p
 					style={{
 						fontSize: "12px",
@@ -100,7 +99,6 @@ export const NutstoreProvider = ({ showModelOptions, isPopup, currentMode }: Nut
 			{showModelOptions && (
 				<>
 					<VSCodeCheckbox
-						style={{ marginTop: -10 }}
 						checked={providerSortingSelected}
 						onChange={(e: any) => {
 							const isChecked = e.target.checked === true
@@ -108,7 +106,8 @@ export const NutstoreProvider = ({ showModelOptions, isPopup, currentMode }: Nut
 							if (!isChecked) {
 								handleFieldChange("nutstoreProviderSorting", "")
 							}
-						}}>
+						}}
+						style={{ marginTop: -10 }}>
 						Sort underlying provider routing
 					</VSCodeCheckbox>
 
@@ -116,11 +115,11 @@ export const NutstoreProvider = ({ showModelOptions, isPopup, currentMode }: Nut
 						<div style={{ marginBottom: -6 }}>
 							<DropdownContainer className="dropdown-container" zIndex={OPENROUTER_MODEL_PICKER_Z_INDEX + 1}>
 								<VSCodeDropdown
-									style={{ width: "100%", marginTop: 3 }}
-									value={apiConfiguration?.nutstoreProviderSorting}
 									onChange={(e: any) => {
 										handleFieldChange("nutstoreProviderSorting", e.target.value)
-									}}>
+									}}
+									style={{ width: "100%", marginTop: 3 }}
+									value={apiConfiguration?.nutstoreProviderSorting}>
 									<VSCodeOption value="">Default</VSCodeOption>
 									<VSCodeOption value="price">Price</VSCodeOption>
 									<VSCodeOption value="throughput">Throughput</VSCodeOption>
@@ -140,7 +139,7 @@ export const NutstoreProvider = ({ showModelOptions, isPopup, currentMode }: Nut
 						</div>
 					)}
 
-					<NutstoreModelPicker isPopup={isPopup} currentMode={currentMode} />
+					<NutstoreModelPicker currentMode={currentMode} isPopup={isPopup} />
 				</>
 			)}
 		</div>

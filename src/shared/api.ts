@@ -590,30 +590,15 @@ export const clineMicrowaveAlphaModelInfo: ModelInfo = {
 }
 
 // Nutstore
-export const nutstoreDefaultModelId = "google/gemini-2.5-pro"
+export const nutstoreDefaultModelId = "openai/gpt-5"
 export const nutstoreDefaultModelInfo: ModelInfo = {
-	maxTokens: 65536,
-	contextWindow: 1_048_576,
+	maxTokens: 8192,
+	contextWindow: 400_000,
 	supportsImages: true,
 	supportsPromptCache: true,
-	inputPrice: 2.5, // Default price (highest tier)
-	outputPrice: 15, // Default price (highest tier)
-	cacheReadsPrice: 0.625,
-	cacheWritesPrice: 4.5,
-	tiers: [
-		{
-			contextWindow: 200000,
-			inputPrice: 1.25,
-			outputPrice: 10,
-			cacheReadsPrice: 0.31,
-		},
-		{
-			contextWindow: Infinity,
-			inputPrice: 2.5,
-			outputPrice: 15,
-			cacheReadsPrice: 0.625,
-		},
-	],
+	inputPrice: 1.25,
+	outputPrice: 10,
+	cacheReadsPrice: 0.125,
 }
 
 // Vertex AI

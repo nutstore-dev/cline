@@ -120,6 +120,8 @@ const NutstoreModelPicker: React.FC<NutstoreModelPickerProps> = ({ isPopup, curr
 		const unfilteredModelIds = Object.keys(openRouterModels)
 			.filter((id) =>
 				[
+					"openai/gpt-5",
+					"openai/gpt-5-codex",
 					"qwen/qwen3-coder",
 					"moonshotai/kimi-k2",
 					"google/gemini-2.5-pro",
@@ -128,7 +130,6 @@ const NutstoreModelPicker: React.FC<NutstoreModelPickerProps> = ({ isPopup, curr
 					"anthropic/claude-opus-4.1",
 					"anthropic/claude-sonnet-4",
 					"anthropic/claude-3.7-sonnet",
-					"openai/gpt-5",
 				].includes(id),
 			)
 			.sort((a, b) => a.localeCompare(b))

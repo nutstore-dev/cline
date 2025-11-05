@@ -1,4 +1,4 @@
-import { ANTHROPIC_MIN_THINKING_BUDGET, ApiProvider, fireworksDefaultModelId } from "@shared/api"
+import { ANTHROPIC_MIN_THINKING_BUDGET, ApiProvider, fireworksDefaultModelId, OcaModelInfo } from "@shared/api"
 import { GlobalStateAndSettings, LocalState, SecretKey, Secrets } from "@shared/storage/state-keys"
 import { ExtensionContext } from "vscode"
 import { Controller } from "@/core/controller"
@@ -193,6 +193,8 @@ export async function readGlobalStateFromDisk(context: ExtensionContext): Promis
 		const azureApiVersion = context.globalState.get<GlobalStateAndSettings["azureApiVersion"]>("azureApiVersion")
 		const openRouterProviderSorting =
 			context.globalState.get<GlobalStateAndSettings["openRouterProviderSorting"]>("openRouterProviderSorting")
+		const nutstoreProviderSorting =
+			context.globalState.get<GlobalStateAndSettings["nutstoreProviderSorting"]>("nutstoreProviderSorting")
 		const lastShownAnnouncementId =
 			context.globalState.get<GlobalStateAndSettings["lastShownAnnouncementId"]>("lastShownAnnouncementId")
 		const autoApprovalSettings =
@@ -401,9 +403,9 @@ export async function readGlobalStateFromDisk(context: ExtensionContext): Promis
 			context.globalState.get<GlobalStateAndSettings["actModeOpenRouterModelId"]>("actModeOpenRouterModelId")
 		const actModeOpenRouterModelInfo =
 			context.globalState.get<GlobalStateAndSettings["actModeOpenRouterModelInfo"]>("actModeOpenRouterModelInfo")
-		const actModeNutstoreModelId = 
+		const actModeNutstoreModelId =
 			context.globalState.get<GlobalStateAndSettings["actModeNutstoreModelId"]>("actModeNutstoreModelId")
-		const actModeNutstoreModelInfo = 
+		const actModeNutstoreModelInfo =
 			context.globalState.get<GlobalStateAndSettings["actModeNutstoreModelInfo"]>("actModeNutstoreModelInfo")
 		const actModeOpenAiModelId =
 			context.globalState.get<GlobalStateAndSettings["actModeOpenAiModelId"]>("actModeOpenAiModelId")
@@ -521,6 +523,7 @@ export async function readGlobalStateFromDisk(context: ExtensionContext): Promis
 			zaiApiLine,
 			azureApiVersion,
 			openRouterProviderSorting,
+			nutstoreProviderSorting,
 			liteLlmBaseUrl,
 			liteLlmUsePromptCache,
 			fireworksModelMaxCompletionTokens,

@@ -64,7 +64,7 @@ const featuredModels = [
 
 const NutstoreModelPicker: React.FC<NutstoreModelPickerProps> = ({ isPopup, currentMode }) => {
 	const { handleModeFieldsChange } = useApiConfigurationHandlers()
-	const { apiConfiguration, openRouterModels, refreshOpenRouterModels } = useExtensionState()
+	const { apiConfiguration, favoritedModelIds, openRouterModels, refreshOpenRouterModels } = useExtensionState()
 	const modeFields = getModeSpecificFields(apiConfiguration, currentMode)
 	const [searchTerm, setSearchTerm] = useState(modeFields.nutstoreModelId || nutstoreDefaultModelId)
 	const [isDropdownVisible, setIsDropdownVisible] = useState(false)
@@ -157,8 +157,6 @@ const NutstoreModelPicker: React.FC<NutstoreModelPickerProps> = ({ isPopup, curr
 	}, [searchableItems])
 
 	const modelSearchResults = useMemo(() => {
-		const favoritedModelIds = apiConfiguration?.favoritedModelIds || []
-
 		// IMPORTANT: highlightjs has a bug where if you use sort/localCompare - "// results.sort((a, b) => a.id.localeCompare(b.id)) ...sorting like this causes ids in objects to be reordered and mismatched"
 
 		// First, get all favorited models
@@ -171,7 +169,7 @@ const NutstoreModelPicker: React.FC<NutstoreModelPickerProps> = ({ isPopup, curr
 
 		// Combine favorited models with search results
 		return [...favoritedModels, ...searchResults]
-	}, [searchableItems, searchTerm, fuse, apiConfiguration?.favoritedModelIds])
+	}, [searchableItems, searchTerm, fuse, favoritedModelIds])
 
 	const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
 		if (!isDropdownVisible) return
@@ -269,19 +267,9 @@ const NutstoreModelPicker: React.FC<NutstoreModelPickerProps> = ({ isPopup, curr
 				<DropdownWrapper ref={dropdownRef}>
 					<VSCodeTextField
 						id="model-search"
-						onBlur={() => {
-							// Check if the current search term matches any model ID in openRouterModels
-							const matchedModelId = Object.keys(openRouterModels).find(
-								(id) => id.toLowerCase() === searchTerm.toLowerCase(),
-							)
-							if (matchedModelId) {
-								handleModelChange(matchedModelId)
-								setIsDropdownVisible(false)
-							}
-						}}
 						onFocus={() => setIsDropdownVisible(true)}
 						onInput={(e) => {
-							setSearchTerm((e.target as HTMLInputElement)?.value.toLowerCase() || "")
+							setSearchTerm((e.target as HTMLInputElement)?.value || "")
 							setIsDropdownVisible(true)
 						}}
 						onKeyDown={handleKeyDown}
@@ -313,7 +301,7 @@ const NutstoreModelPicker: React.FC<NutstoreModelPickerProps> = ({ isPopup, curr
 					{isDropdownVisible && (
 						<DropdownList ref={dropdownListRef}>
 							{modelSearchResults.map((item, index) => {
-								const isFavorite = (apiConfiguration?.favoritedModelIds || []).includes(item.id)
+								const isFavorite = (favoritedModelIds || []).includes(item.id)
 								return (
 									<DropdownItem
 										isSelected={index === selectedIndex}

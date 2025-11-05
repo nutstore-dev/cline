@@ -45,6 +45,9 @@ export async function updateApiConfigurationProto(
 			planModeOpenRouterModelInfo: protoApiConfiguration.planModeOpenRouterModelInfo
 				? fromProtobufModelInfo(protoApiConfiguration.planModeOpenRouterModelInfo)
 				: undefined,
+			planModeNutstoreModelInfo: protoApiConfiguration.planModeNutstoreModelInfo
+				? fromProtobufModelInfo(protoApiConfiguration.planModeNutstoreModelInfo)
+				: undefined,
 			planModeOpenAiModelInfo: protoApiConfiguration.planModeOpenAiModelInfo
 				? fromProtobufOpenAiCompatibleModelInfo(protoApiConfiguration.planModeOpenAiModelInfo)
 				: undefined,
@@ -76,6 +79,9 @@ export async function updateApiConfigurationProto(
 			// Act Mode
 			actModeOpenRouterModelInfo: protoApiConfiguration.actModeOpenRouterModelInfo
 				? fromProtobufModelInfo(protoApiConfiguration.actModeOpenRouterModelInfo)
+				: undefined,
+			actModeNutstoreModelInfo: protoApiConfiguration.actModeNutstoreModelInfo
+				? fromProtobufModelInfo(protoApiConfiguration.actModeNutstoreModelInfo)
 				: undefined,
 			actModeOpenAiModelInfo: protoApiConfiguration.actModeOpenAiModelInfo
 				? fromProtobufOpenAiCompatibleModelInfo(protoApiConfiguration.actModeOpenAiModelInfo)

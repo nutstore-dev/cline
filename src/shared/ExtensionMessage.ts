@@ -98,6 +98,7 @@ export interface ExtensionState {
 	remoteConfigSettings?: Partial<GlobalStateAndSettings> & { remoteConfiguredProviders?: string[] }
 	subagentsEnabled?: boolean
 	nativeToolCallSetting?: ClineFeatureSetting
+	uriScheme?: string
 }
 
 export interface ClineMessage {

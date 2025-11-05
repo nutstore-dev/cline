@@ -68,7 +68,7 @@ export interface Settings {
 	geminiBaseUrl: string | undefined
 	azureApiVersion: string | undefined
 	openRouterProviderSorting: string | undefined
-	nutsotreProviderSorting: string | undefined
+	nutstoreProviderSorting: string | undefined
 	autoApprovalSettings: AutoApprovalSettings
 	globalClineRulesToggles: ClineRulesToggles
 	globalWorkflowToggles: ClineRulesToggles

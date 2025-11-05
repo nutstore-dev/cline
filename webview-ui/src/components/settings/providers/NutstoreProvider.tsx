@@ -10,7 +10,6 @@ import { DropdownContainer } from "../common/ModelSelector"
 import NutstoreModelPicker, { OPENROUTER_MODEL_PICKER_Z_INDEX } from "../NutstoreModelPicker"
 import { formatPrice } from "../utils/pricingUtils"
 import { useApiConfigurationHandlers } from "../utils/useApiConfigurationHandlers"
-import * as vscode from "vscode"
 
 /**
  * Component to display OpenRouter balance information
@@ -61,7 +60,7 @@ interface NutstoreProviderProps {
  * The OpenRouter provider configuration component
  */
 export const NutstoreProvider = ({ showModelOptions, isPopup, currentMode }: NutstoreProviderProps) => {
-	const { apiConfiguration } = useExtensionState()
+	const { apiConfiguration, uriScheme } = useExtensionState()
 	const { handleFieldChange } = useApiConfigurationHandlers()
 
 	const [providerSortingSelected, setProviderSortingSelected] = useState(!!apiConfiguration?.nutstoreProviderSorting)
@@ -70,7 +69,7 @@ export const NutstoreProvider = ({ showModelOptions, isPopup, currentMode }: Nut
 	useMount(async () => {
 		setAuthUrl(
 			await createNutOAuthUrl({
-				app: `cline-${vscode.env.uriScheme || "vscode"}`,
+				app: `cline-${uriScheme || "vscode"}`,
 			}),
 		)
 	})

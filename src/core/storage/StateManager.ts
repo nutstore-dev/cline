@@ -421,6 +421,7 @@ export class StateManager {
 		const {
 			apiKey,
 			openRouterApiKey,
+			nutstoreAccessToken,
 			awsAccessKey,
 			awsSecretKey,
 			awsSessionToken,
@@ -506,6 +507,8 @@ export class StateManager {
 			planModeAwsBedrockCustomModelBaseId,
 			planModeOpenRouterModelId,
 			planModeOpenRouterModelInfo,
+			planModeNutstoreModelId,
+			planModeNutstoreModelInfo,
 			planModeOpenAiModelId,
 			planModeOpenAiModelInfo,
 			planModeOllamaModelId,
@@ -542,6 +545,8 @@ export class StateManager {
 			actModeAwsBedrockCustomModelBaseId,
 			actModeOpenRouterModelId,
 			actModeOpenRouterModelInfo,
+			actModeNutstoreModelId,
+			actModeNutstoreModelInfo,
 			actModeOpenAiModelId,
 			actModeOpenAiModelInfo,
 			actModeOllamaModelId,
@@ -582,6 +587,8 @@ export class StateManager {
 			planModeAwsBedrockCustomModelBaseId,
 			planModeOpenRouterModelId,
 			planModeOpenRouterModelInfo,
+			planModeNutstoreModelId,
+			planModeNutstoreModelInfo,
 			planModeOpenAiModelId,
 			planModeOpenAiModelInfo,
 			planModeOllamaModelId,
@@ -619,6 +626,8 @@ export class StateManager {
 			actModeAwsBedrockCustomModelBaseId,
 			actModeOpenRouterModelId,
 			actModeOpenRouterModelInfo,
+			actModeNutstoreModelId,
+			actModeNutstoreModelInfo,
 			actModeOpenAiModelId,
 			actModeOpenAiModelInfo,
 			actModeOllamaModelId,
@@ -694,6 +703,7 @@ export class StateManager {
 		this.setSecretsBatch({
 			apiKey,
 			openRouterApiKey,
+			nutstoreAccessToken,
 			clineAccountId,
 			awsAccessKey,
 			awsSecretKey,
@@ -970,6 +980,7 @@ export class StateManager {
 			// Secrets
 			apiKey: this.secretsCache["apiKey"],
 			openRouterApiKey: this.secretsCache["openRouterApiKey"],
+			nutstoreAccessToken: this.secretsCache["nutstoreAccessToken"],
 			clineAccountId: this.secretsCache["clineAccountId"],
 			awsAccessKey: this.secretsCache["awsAccessKey"],
 			awsSecretKey: this.secretsCache["awsSecretKey"],
@@ -1099,6 +1110,10 @@ export class StateManager {
 				this.taskStateCache["planModeOpenRouterModelId"] || this.globalStateCache["planModeOpenRouterModelId"],
 			planModeOpenRouterModelInfo:
 				this.taskStateCache["planModeOpenRouterModelInfo"] || this.globalStateCache["planModeOpenRouterModelInfo"],
+			planModeNutstoreModelId:
+				this.taskStateCache["planModeNutstoreModelId"] || this.globalStateCache["planModeNutstoreModelId"],
+			planModeNutstoreModelInfo:
+				this.taskStateCache["planModeNutstoreModelInfo"] || this.globalStateCache["planModeNutstoreModelInfo"],
 			planModeOpenAiModelId: this.taskStateCache["planModeOpenAiModelId"] || this.globalStateCache["planModeOpenAiModelId"],
 			planModeOpenAiModelInfo:
 				this.taskStateCache["planModeOpenAiModelInfo"] || this.globalStateCache["planModeOpenAiModelInfo"],
@@ -1169,6 +1184,10 @@ export class StateManager {
 				this.taskStateCache["actModeOpenRouterModelId"] || this.globalStateCache["actModeOpenRouterModelId"],
 			actModeOpenRouterModelInfo:
 				this.taskStateCache["actModeOpenRouterModelInfo"] || this.globalStateCache["actModeOpenRouterModelInfo"],
+			actModeNutstoreModelId:
+				this.taskStateCache["actModeNutstoreModelId"] || this.globalStateCache["actModeNutstoreModelId"],
+			actModeNutstoreModelInfo:
+				this.taskStateCache["actModeNutstoreModelInfo"] || this.globalStateCache["actModeNutstoreModelInfo"],
 			actModeOpenAiModelId: this.taskStateCache["actModeOpenAiModelId"] || this.globalStateCache["actModeOpenAiModelId"],
 			actModeOpenAiModelInfo:
 				this.taskStateCache["actModeOpenAiModelInfo"] || this.globalStateCache["actModeOpenAiModelInfo"],

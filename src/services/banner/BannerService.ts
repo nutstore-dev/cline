@@ -177,6 +177,8 @@ export class BannerService {
 							return !!apiConfiguration?.openAiApiKey || !!apiConfiguration?.openAiNativeApiKey
 						case "openrouter":
 							return !!apiConfiguration?.openRouterApiKey
+						case "nutstore":
+							return !!apiConfiguration?.nutstoreAccessToken
 						case "bedrock":
 							return !!apiConfiguration?.awsAccessKey || !!apiConfiguration?.awsBedrockApiKey
 						case "gemini":

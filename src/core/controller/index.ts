@@ -964,6 +964,7 @@ export class Controller {
 		const distinctId = getDistinctId()
 		const version = ExtensionRegistryInfo.version
 		const environment = ClineEnv.config().environment
+		const uriScheme = vscode.env.uriScheme
 
 		// Set feature flag in dictation settings based on platform
 		const updatedDictationSettings = {
@@ -1041,6 +1042,7 @@ export class Controller {
 				user: this.stateManager.getGlobalStateKey("nativeToolCallEnabled"),
 				featureFlag: featureFlagsService.getNativeToolCallEnabled(),
 			},
+			uriScheme,
 		}
 	}
 

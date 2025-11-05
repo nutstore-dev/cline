@@ -6,11 +6,11 @@ import { useMount } from "react-use"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import VSCodeButtonLink from "../../common/VSCodeButtonLink"
 import { useOpenRouterKeyInfo } from "../../ui/hooks/useOpenRouterKeyInfo"
-import { DebouncedTextField } from "../common/DebouncedTextField"
 import { DropdownContainer } from "../common/ModelSelector"
 import NutstoreModelPicker, { OPENROUTER_MODEL_PICKER_Z_INDEX } from "../NutstoreModelPicker"
 import { formatPrice } from "../utils/pricingUtils"
 import { useApiConfigurationHandlers } from "../utils/useApiConfigurationHandlers"
+import * as vscode from "vscode"
 
 /**
  * Component to display OpenRouter balance information
@@ -61,7 +61,7 @@ interface NutstoreProviderProps {
  * The OpenRouter provider configuration component
  */
 export const NutstoreProvider = ({ showModelOptions, isPopup, currentMode }: NutstoreProviderProps) => {
-	const { apiConfiguration, uriScheme } = useExtensionState()
+	const { apiConfiguration } = useExtensionState()
 	const { handleFieldChange } = useApiConfigurationHandlers()
 
 	const [providerSortingSelected, setProviderSortingSelected] = useState(!!apiConfiguration?.nutstoreProviderSorting)
@@ -70,7 +70,7 @@ export const NutstoreProvider = ({ showModelOptions, isPopup, currentMode }: Nut
 	useMount(async () => {
 		setAuthUrl(
 			await createNutOAuthUrl({
-				app: `cline-${uriScheme}`,
+				app: `cline-${vscode.env.uriScheme || "vscode"}`,
 			}),
 		)
 	})

@@ -4,6 +4,7 @@ import { ModelInfo, nutstoreDefaultModelId, nutstoreDefaultModelInfo } from "@sh
 import { shouldSkipReasoningForModel } from "@utils/model-utils"
 import axios from "axios"
 import OpenAI from "openai"
+import type { ChatCompletionTool as OpenAITool } from "openai/resources/chat/completions"
 import * as vscode from "vscode"
 import { ApiHandler, CommonApiHandlerOptions } from "../"
 import { withRetry } from "../retry"
@@ -55,7 +56,7 @@ export class NutstoreHandler implements ApiHandler {
 	}
 
 	@withRetry()
-	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[], taskId?: string): ApiStream {
+	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[], tools?: OpenAITool[], taskId?: string): ApiStream {
 		const client = this.ensureClient()
 		this.lastGenerationId = undefined
 
@@ -67,6 +68,7 @@ export class NutstoreHandler implements ApiHandler {
 			this.options.reasoningEffort,
 			this.options.thinkingBudgetTokens,
 			this.options.nutstoreProviderSorting,
+			tools,
 			taskId,
 		)
 

@@ -1,12 +1,14 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import { ModelInfo, vercelAiGatewayDefaultModelId, vercelAiGatewayDefaultModelInfo } from "@shared/api"
 import OpenAI from "openai"
-import { ApiHandler } from "../index"
+import type { ChatCompletionTool as OpenAITool } from "openai/resources/chat/completions"
+import { ApiHandler, CommonApiHandlerOptions } from "../index"
 import { withRetry } from "../retry"
 import { ApiStream } from "../transform/stream"
+import { ToolCallProcessor } from "../transform/tool-call-processor"
 import { createVercelAIGatewayStream } from "../transform/vercel-ai-gateway-stream"
 
-interface VercelAIGatewayHandlerOptions {
+interface VercelAIGatewayHandlerOptions extends CommonApiHandlerOptions {
 	vercelAiGatewayApiKey?: string
 	vercelAiGatewayModelId?: string
 	vercelAiGatewayModelInfo?: ModelInfo
@@ -42,14 +44,22 @@ export class VercelAIGatewayHandler implements ApiHandler {
 	}
 
 	@withRetry()
-	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
+	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[], tools?: OpenAITool[]): ApiStream {
 		const client = this.ensureClient()
 		const modelId = this.getModel().id
 		const modelInfo = this.getModel().info
 
 		try {
-			const stream = await createVercelAIGatewayStream(client, systemPrompt, messages, { id: modelId, info: modelInfo })
+			const stream = await createVercelAIGatewayStream(
+				client,
+				systemPrompt,
+				messages,
+				{ id: modelId, info: modelInfo },
+				tools,
+			)
 			let didOutputUsage: boolean = false
+
+			const toolCallProcessor = new ToolCallProcessor()
 
 			for await (const chunk of stream) {
 				const delta = chunk.choices[0]?.delta
@@ -58,6 +68,10 @@ export class VercelAIGatewayHandler implements ApiHandler {
 						type: "text",
 						text: delta.content,
 					}
+				}
+
+				if (delta?.tool_calls) {
+					yield* toolCallProcessor.processToolCallDeltas(delta.tool_calls)
 				}
 
 				if (!didOutputUsage && chunk.usage) {

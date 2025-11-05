@@ -1,4 +1,3 @@
-import { createNutOAuthUrl } from "@nutstore/sso-js"
 import {
 	ApiConfiguration,
 	ApiProvider,
@@ -24,6 +23,7 @@ import {
 	geminiModels,
 	groqDefaultModelId,
 	groqModels,
+	hicapModelInfoSaneDefaults,
 	huaweiCloudMaasDefaultModelId,
 	huaweiCloudMaasModels,
 	huggingFaceDefaultModelId,
@@ -38,6 +38,8 @@ import {
 	mainlandQwenModels,
 	mainlandZAiDefaultModelId,
 	mainlandZAiModels,
+	minimaxDefaultModelId,
+	minimaxModels,
 	mistralDefaultModelId,
 	mistralModels,
 	moonshotDefaultModelId,
@@ -120,10 +122,13 @@ export function normalizeApiConfiguration(
 					currentMode === "plan"
 						? apiConfiguration?.planModeAwsBedrockCustomModelBaseId
 						: apiConfiguration?.actModeAwsBedrockCustomModelBaseId
+
 				return {
 					selectedProvider: provider,
 					selectedModelId: modelId || bedrockDefaultModelId,
-					selectedModelInfo: (baseModelId && bedrockModels[baseModelId]) || bedrockModels[bedrockDefaultModelId],
+					selectedModelInfo:
+						(baseModelId && bedrockModels[baseModelId as keyof typeof bedrockModels]) ||
+						bedrockModels[bedrockDefaultModelId],
 				}
 			}
 			return getProviderData(bedrockModels, bedrockDefaultModelId)
@@ -203,6 +208,14 @@ export function normalizeApiConfiguration(
 				selectedProvider: provider,
 				selectedModelId: openAiModelId || "",
 				selectedModelInfo: openAiModelInfo || openAiModelInfoSaneDefaults,
+			}
+		case "hicap":
+			const hicapModelId =
+				currentMode === "plan" ? apiConfiguration?.planModeHicapModelId : apiConfiguration?.actModeHicapModelId
+			return {
+				selectedProvider: provider,
+				selectedModelId: hicapModelId || "",
+				selectedModelInfo: hicapModelInfoSaneDefaults,
 			}
 		case "ollama":
 			const ollamaModelId =
@@ -314,6 +327,20 @@ export function normalizeApiConfiguration(
 				selectedModelId: huaweiCloudMaasModelId || huaweiCloudMaasDefaultModelId,
 				selectedModelInfo: huaweiCloudMaasModelInfo || huaweiCloudMaasModels[huaweiCloudMaasDefaultModelId],
 			}
+		case "dify":
+			return {
+				selectedProvider: provider,
+				selectedModelId: "dify-workflow",
+				selectedModelInfo: {
+					maxTokens: 8192,
+					contextWindow: 128000,
+					supportsImages: true,
+					supportsPromptCache: false,
+					inputPrice: 0,
+					outputPrice: 0,
+					description: "Dify workflow - model selection is configured in your Dify application",
+				},
+			}
 		case "vercel-ai-gateway":
 			const vercelAiGatewayModelId =
 				currentMode === "plan"
@@ -344,6 +371,17 @@ export function normalizeApiConfiguration(
 						? fireworksModels[fireworksModelId as keyof typeof fireworksModels]
 						: fireworksModels[fireworksDefaultModelId],
 			}
+		case "oca":
+			const ocaModelId = currentMode === "plan" ? apiConfiguration?.planModeOcaModelId : apiConfiguration?.actModeOcaModelId
+			const ocaModelInfo =
+				currentMode === "plan" ? apiConfiguration?.planModeOcaModelInfo : apiConfiguration?.actModeOcaModelInfo
+			return {
+				selectedProvider: provider,
+				selectedModelId: ocaModelId || "",
+				selectedModelInfo: ocaModelInfo || liteLlmModelInfoSaneDefaults,
+			}
+		case "minimax":
+			return getProviderData(minimaxModels, minimaxDefaultModelId)
 		default:
 			return getProviderData(anthropicModels, anthropicDefaultModelId)
 	}
@@ -377,6 +415,7 @@ export function getModeSpecificFields(apiConfiguration: ApiConfiguration | undef
 			huggingFaceModelId: undefined,
 			huaweiCloudMaasModelId: undefined,
 			vercelAiGatewayModelId: undefined,
+			hicapModelId: undefined,
 
 			// Model info objects
 			openAiModelInfo: undefined,
@@ -427,6 +466,8 @@ export function getModeSpecificFields(apiConfiguration: ApiConfiguration | undef
 			mode === "plan" ? apiConfiguration.planModeHuaweiCloudMaasModelId : apiConfiguration.actModeHuaweiCloudMaasModelId,
 		vercelAiGatewayModelId:
 			mode === "plan" ? apiConfiguration.planModeVercelAiGatewayModelId : apiConfiguration.actModeVercelAiGatewayModelId,
+		ocaModelId: mode === "plan" ? apiConfiguration.planModeOcaModelId : apiConfiguration.actModeOcaModelId,
+		hicapModelId: mode === "plan" ? apiConfiguration.planModeHicapModelId : apiConfiguration.actModeHicapModelId,
 
 		// Model info objects
 		openAiModelInfo: mode === "plan" ? apiConfiguration.planModeOpenAiModelInfo : apiConfiguration.actModeOpenAiModelInfo,
@@ -447,6 +488,7 @@ export function getModeSpecificFields(apiConfiguration: ApiConfiguration | undef
 				: apiConfiguration.actModeVercelAiGatewayModelInfo,
 		vsCodeLmModelSelector:
 			mode === "plan" ? apiConfiguration.planModeVsCodeLmModelSelector : apiConfiguration.actModeVsCodeLmModelSelector,
+		hicapModelInfo: mode === "plan" ? apiConfiguration.planModeHicapModelInfo : apiConfiguration.actModeHicapModelInfo,
 
 		// AWS Bedrock fields
 		awsBedrockCustomSelected:
@@ -468,6 +510,8 @@ export function getModeSpecificFields(apiConfiguration: ApiConfiguration | undef
 		thinkingBudgetTokens:
 			mode === "plan" ? apiConfiguration.planModeThinkingBudgetTokens : apiConfiguration.actModeThinkingBudgetTokens,
 		reasoningEffort: mode === "plan" ? apiConfiguration.planModeReasoningEffort : apiConfiguration.actModeReasoningEffort,
+		// Oracle Code Assist
+		ocaModelInfo: mode === "plan" ? apiConfiguration.planModeOcaModelInfo : apiConfiguration.actModeOcaModelInfo,
 	}
 }
 
@@ -480,12 +524,16 @@ export async function syncModeConfigurations(
 	sourceMode: Mode,
 	handleFieldsChange: (updates: Partial<ApiConfiguration>) => Promise<void>,
 ): Promise<void> {
-	if (!apiConfiguration) return
+	if (!apiConfiguration) {
+		return
+	}
 
 	const sourceFields = getModeSpecificFields(apiConfiguration, sourceMode)
 	const { apiProvider } = sourceFields
 
-	if (!apiProvider) return
+	if (!apiProvider) {
+		return
+	}
 
 	// Build the complete update object with both plan and act mode fields
 	const updates: Partial<ApiConfiguration> = {
@@ -596,11 +644,30 @@ export async function syncModeConfigurations(
 			updates.planModeHuaweiCloudMaasModelInfo = sourceFields.huaweiCloudMaasModelInfo
 			updates.actModeHuaweiCloudMaasModelInfo = sourceFields.huaweiCloudMaasModelInfo
 			break
+
+		case "dify":
+			// Dify doesn't have mode-specific model configurations
+			// The model is configured in the Dify application itself
+			break
+
+		case "hicap":
+			updates.planModeHicapModelId = sourceFields.hicapModelId
+			updates.actModeHicapModelId = sourceFields.hicapModelId
+			updates.planModeHicapModelInfo = sourceFields.hicapModelInfo
+			updates.actModeHicapModelInfo = sourceFields.hicapModelInfo
+			break
+
 		case "vercel-ai-gateway":
 			updates.planModeVercelAiGatewayModelId = sourceFields.vercelAiGatewayModelId
 			updates.actModeVercelAiGatewayModelId = sourceFields.vercelAiGatewayModelId
 			updates.planModeVercelAiGatewayModelInfo = sourceFields.vercelAiGatewayModelInfo
 			updates.actModeVercelAiGatewayModelInfo = sourceFields.vercelAiGatewayModelInfo
+			break
+		case "oca":
+			updates.planModeOcaModelId = sourceFields.ocaModelId
+			updates.actModeOcaModelId = sourceFields.ocaModelId
+			updates.planModeOcaModelInfo = sourceFields.ocaModelInfo
+			updates.actModeOcaModelInfo = sourceFields.ocaModelInfo
 			break
 
 		// Providers that use apiProvider + apiModelId fields
@@ -620,6 +687,7 @@ export async function syncModeConfigurations(
 		case "cerebras":
 		case "sapaicore":
 		case "zai":
+		case "minimax":
 		default:
 			updates.planModeApiModelId = sourceFields.apiModelId
 			updates.actModeApiModelId = sourceFields.apiModelId

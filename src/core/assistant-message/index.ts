@@ -1,3 +1,4 @@
+import { ClineDefaultTool } from "@shared/tools"
 export type AssistantMessageContent = TextContent | ToolUse
 
 export { parseAssistantMessageV2 } from "./parse-assistant-message"
@@ -8,36 +9,11 @@ export interface TextContent {
 	partial: boolean
 }
 
-export const toolUseNames = [
-	"execute_command",
-	"read_file",
-	"write_to_file",
-	"replace_in_file",
-	"search_files",
-	"list_files",
-	"list_code_definition_names",
-	"browser_action",
-	"use_mcp_tool",
-	"access_mcp_resource",
-	"ask_followup_question",
-	"plan_mode_respond",
-	"load_mcp_documentation",
-	"attempt_completion",
-	"new_task",
-	"condense",
-	"summarize_task",
-	"report_bug",
-	"new_rule",
-	"web_fetch",
-] as const
-
-// Converts array of tool call names into a union type ("execute_command" | "read_file" | ...)
-export type ToolUseName = (typeof toolUseNames)[number]
-
 export const toolParamNames = [
 	"command",
 	"requires_approval",
 	"path",
+	"absolutePath",
 	"content",
 	"diff",
 	"regex",
@@ -63,13 +39,15 @@ export const toolParamNames = [
 	"additional_context",
 	"needs_more_exploration",
 	"task_progress",
+	"timeout",
+	"input",
 ] as const
 
 export type ToolParamName = (typeof toolParamNames)[number]
 
 export interface ToolUse {
 	type: "tool_use"
-	name: ToolUseName
+	name: ClineDefaultTool // id of the tool being used
 	// params is a partial record, allowing only some or none of the possible parameters to be used
 	params: Partial<Record<ToolParamName, string>>
 	partial: boolean

@@ -37,6 +37,7 @@ import { telemetryService } from "@/services/telemetry"
 import { ShowMessageType } from "@/shared/proto/host/window"
 import { AuthState } from "@/shared/proto/index.cline"
 import { getLatestAnnouncementId } from "@/utils/announcements"
+import { getUriScheme } from "@/utils/env"
 import { getCwd, getDesktopDir } from "@/utils/path"
 import { PromptRegistry } from "../prompts/system-prompt"
 import {
@@ -964,7 +965,7 @@ export class Controller {
 		const distinctId = getDistinctId()
 		const version = ExtensionRegistryInfo.version
 		const environment = ClineEnv.config().environment
-		const uriScheme = vscode.env.uriScheme
+		const uriScheme = await getUriScheme()
 
 		// Set feature flag in dictation settings based on platform
 		const updatedDictationSettings = {

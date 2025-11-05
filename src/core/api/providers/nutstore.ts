@@ -5,7 +5,7 @@ import { shouldSkipReasoningForModel } from "@utils/model-utils"
 import axios from "axios"
 import OpenAI from "openai"
 import type { ChatCompletionTool as OpenAITool } from "openai/resources/chat/completions"
-import * as vscode from "vscode"
+import { getUriScheme } from "@/utils/env"
 import { ApiHandler, CommonApiHandlerOptions } from "../"
 import { withRetry } from "../retry"
 import { createOpenRouterStream } from "../transform/openrouter-stream"
@@ -26,21 +26,20 @@ export class NutstoreHandler implements ApiHandler {
 	private client: OpenAI | undefined
 	lastGenerationId?: string
 	private host: string = "https://ai-assistant.jianguoyun.net.cn"
-	private uriScheme: string = vscode.env.uriScheme
 	// private host: string = "http://localhost.eo2suite.cn:9000"
 
 	constructor(options: NutstoreHandlerOptions) {
 		this.options = options
 	}
 
-	private ensureClient(): OpenAI {
+	private async ensureClient(): Promise<OpenAI> {
 		if (!this.client) {
 			if (!this.options.nutstoreAccessToken) {
 				throw new Error("OpenRouter API key is required")
 			}
 			try {
 				this.client = new OpenAI({
-					baseURL: `${this.host}/cline-${this.uriScheme}/llm-router`,
+					baseURL: `${this.host}/cline-${await getUriScheme()}/llm-router`,
 					apiKey: "", // put AccessToken in header for verification
 					defaultHeaders: {
 						"HTTP-Referer": "https://cline.bot", // Optional, for including your app on openrouter.ai rankings.
@@ -56,8 +55,13 @@ export class NutstoreHandler implements ApiHandler {
 	}
 
 	@withRetry()
-	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[], tools?: OpenAITool[], taskId?: string): ApiStream {
-		const client = this.ensureClient()
+	async *createMessage(
+		systemPrompt: string,
+		messages: Anthropic.Messages.MessageParam[],
+		tools?: OpenAITool[],
+		taskId?: string,
+	): ApiStream {
+		const client = await this.ensureClient()
 		this.lastGenerationId = undefined
 
 		const stream = await createOpenRouterStream(

@@ -466,13 +466,13 @@ export class Task {
 		const mode = this.stateManager.getGlobalSettingsKey("mode")
 		const currentProvider = mode === "plan" ? apiConfiguration.planModeApiProvider : apiConfiguration.actModeApiProvider
 
+		// Apply global OpenAI reasoning effort setting to all providers
+		// Models that don't support this parameter will simply ignore it
 		const openaiReasoningEffort = this.stateManager.getGlobalSettingsKey("openaiReasoningEffort")
-		if (currentProvider === "openai" || currentProvider === "openai-native" || currentProvider === "sapaicore") {
-			if (mode === "plan") {
-				effectiveApiConfiguration.planModeReasoningEffort = openaiReasoningEffort
-			} else {
-				effectiveApiConfiguration.actModeReasoningEffort = openaiReasoningEffort
-			}
+		if (mode === "plan") {
+			effectiveApiConfiguration.planModeReasoningEffort = openaiReasoningEffort
+		} else {
+			effectiveApiConfiguration.actModeReasoningEffort = openaiReasoningEffort
 		}
 
 		// Now that ulid is initialized, we can build the API handler
@@ -2033,7 +2033,12 @@ export class Task {
 			// saves task history item which we use to keep track of conversation history deleted range
 		}
 
-		const stream = this.api.createMessage(systemPrompt, contextManagementMetadata.truncatedConversationHistory, tools, this.taskId)
+		const stream = this.api.createMessage(
+			systemPrompt,
+			contextManagementMetadata.truncatedConversationHistory,
+			tools,
+			this.taskId,
+		)
 
 		const iterator = stream[Symbol.asyncIterator]()
 

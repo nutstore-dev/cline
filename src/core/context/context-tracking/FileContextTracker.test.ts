@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, it } from "mocha"
 import * as path from "path"
 import * as sinon from "sinon"
 import * as vscode from "vscode"
-import { Controller } from "@/core/controller"
+import type { Controller } from "@/core/controller"
 import { setVscodeHostProviderMock } from "@/test/host-provider-test-utils"
 import type { FileMetadataEntry, TaskMetadata } from "./ContextTrackerTypes"
 import { FileContextTracker } from "./FileContextTracker"
@@ -47,7 +47,7 @@ describe("FileContextTracker", () => {
 		chokidarWatchStub = sandbox.stub(chokidar, "watch").returns(mockFileSystemWatcher as any)
 
 		// Mock disk module functions
-		mockTaskMetadata = { files_in_context: [], model_usage: [] }
+		mockTaskMetadata = { files_in_context: [], model_usage: [], environment_history: [] }
 		getTaskMetadataStub = sandbox.stub(diskModule, "getTaskMetadata").resolves(mockTaskMetadata)
 		saveTaskMetadataStub = sandbox.stub(diskModule, "saveTaskMetadata").resolves()
 

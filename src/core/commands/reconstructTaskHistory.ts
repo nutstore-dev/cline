@@ -1,11 +1,12 @@
 import { getSavedClineMessages, getTaskMetadata, readTaskHistoryFromState, writeTaskHistoryToState } from "@core/storage/disk"
 import { HostProvider } from "@hosts/host-provider"
-import { ClineMessage } from "@shared/ExtensionMessage"
-import { HistoryItem } from "@shared/HistoryItem"
+import type { ClineMessage } from "@shared/ExtensionMessage"
+import type { HistoryItem } from "@shared/HistoryItem"
 import { ShowMessageType } from "@shared/proto/host/window"
 import { fileExistsAtPath } from "@utils/fs"
 import * as path from "path"
 import { ulid } from "ulid"
+import { Logger } from "@/shared/services/Logger"
 
 interface TaskReconstructionResult {
 	totalTasks: number
@@ -16,8 +17,10 @@ interface TaskReconstructionResult {
 
 /**
  * Reconstructs task history from existing task folders
+ * @param showNotifications Whether to show user-facing notifications and dialogs
+ * @returns Reconstruction result or null if cancelled
  */
-export async function reconstructTaskHistory(): Promise<void> {
+export async function reconstructTaskHistory(showNotifications = true): Promise<TaskReconstructionResult | null> {
 	try {
 		// Show confirmation dialog using HostProvider
 		const proceed = await HostProvider.window.showMessage({
@@ -30,37 +33,46 @@ export async function reconstructTaskHistory(): Promise<void> {
 		})
 
 		if (proceed?.selectedOption !== "Yes, Reconstruct") {
-			return
+			return null
 		}
 
-		// Show initial progress message
-		HostProvider.window.showMessage({
-			type: ShowMessageType.INFORMATION,
-			message: "Reconstructing task history...",
-		})
+		if (showNotifications) {
+			// Show initial progress message
+			HostProvider.window.showMessage({
+				type: ShowMessageType.INFORMATION,
+				message: "Reconstructing task history...",
+			})
+		}
 
 		const result = await performTaskHistoryReconstruction()
 
 		// Show results
-		if (result.errors.length > 0) {
-			const errorMessage = `Reconstruction completed with warnings:\n- Reconstructed: ${result.reconstructedTasks} tasks\n- Skipped: ${result.skippedTasks} tasks\n- Errors: ${result.errors.length}\n\nFirst few errors:\n${result.errors.slice(0, 3).join("\n")}`
+		if (showNotifications) {
+			if (result.errors.length > 0) {
+				const errorMessage = `Reconstruction completed with warnings:\n- Reconstructed: ${result.reconstructedTasks} tasks\n- Skipped: ${result.skippedTasks} tasks\n- Errors: ${result.errors.length}\n\nFirst few errors:\n${result.errors.slice(0, 3).join("\n")}`
 
-			HostProvider.window.showMessage({
-				type: ShowMessageType.WARNING,
-				message: errorMessage,
-			})
-		} else {
-			HostProvider.window.showMessage({
-				type: ShowMessageType.INFORMATION,
-				message: `Task history successfully reconstructed! Found and restored ${result.reconstructedTasks} tasks.`,
-			})
+				HostProvider.window.showMessage({
+					type: ShowMessageType.WARNING,
+					message: errorMessage,
+				})
+			} else {
+				HostProvider.window.showMessage({
+					type: ShowMessageType.INFORMATION,
+					message: `Task history successfully reconstructed! Found and restored ${result.reconstructedTasks} tasks.`,
+				})
+			}
 		}
+
+		return result
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error)
-		HostProvider.window.showMessage({
-			type: ShowMessageType.ERROR,
-			message: `Failed to reconstruct task history: ${errorMessage}`,
-		})
+		if (showNotifications) {
+			HostProvider.window.showMessage({
+				type: ShowMessageType.ERROR,
+				message: `Failed to reconstruct task history: ${errorMessage}`,
+			})
+		}
+		return null
 	}
 }
 
@@ -132,7 +144,7 @@ async function backupExistingTaskHistory(): Promise<void> {
 		}
 	} catch (error) {
 		// Non-fatal error, just log it
-		console.warn("Failed to backup existing task history:", error)
+		Logger.warn("Failed to backup existing task history:", error)
 	}
 }
 

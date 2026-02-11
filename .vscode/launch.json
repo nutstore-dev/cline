@@ -12,7 +12,12 @@
 			"args": [
 				"--extensionDevelopmentPath=${workspaceFolder}",
 				"--disable-workspace-trust",
-				"--disable-extensions", // Avoid conflicts with installed extensions
+				"--disable-extension",
+				"saoudrizwan.claude-dev", // Avoid conflicts with installed Cline
+				"--disable-extension",
+				"saoudrizwan.cline-nightly", // Avoid conflicts with installed Cline Nightly
+				"--disable-extension",
+				"jianguoyun.cline", // Avoid conflicts with our production version
 				"${workspaceFolder}"
 			],
 			"outFiles": [
@@ -33,7 +38,12 @@
 			"args": [
 				"--extensionDevelopmentPath=${workspaceFolder}",
 				"--disable-workspace-trust",
-				"--disable-extensions", // Avoid conflicts with installed extensions
+				"--disable-extension",
+				"saoudrizwan.claude-dev", // Avoid conflicts with installed Cline
+				"--disable-extension",
+				"saoudrizwan.cline-nightly", // Avoid conflicts with installed Cline Nightly
+				"--disable-extension",
+				"jianguoyun.cline", // Avoid conflicts with our production version
 				"${workspaceFolder}"
 			],
 			"outFiles": [
@@ -54,7 +64,12 @@
 			"args": [
 				"--extensionDevelopmentPath=${workspaceFolder}",
 				"--disable-workspace-trust",
-				"--disable-extensions", // Avoid conflicts with installed extensions
+				"--disable-extension",
+				"saoudrizwan.claude-dev", // Avoid conflicts with installed Cline
+				"--disable-extension",
+				"saoudrizwan.cline-nightly", // Avoid conflicts with installed Cline Nightly
+				"--disable-extension",
+				"jianguoyun.cline", // Avoid conflicts with our production version
 				"${workspaceFolder}"
 			],
 			"outFiles": [
@@ -77,7 +92,12 @@
 				"--user-data-dir=${workspaceFolder}/dist/tmp/user",
 				"--profile-temp",
 				"--sync=off",
-				"--disable-extensions", // Avoid conflicts with installed extensions
+				"--disable-extension",
+				"saoudrizwan.claude-dev", // Avoid conflicts with installed Cline
+				"--disable-extension",
+				"saoudrizwan.cline-nightly", // Avoid conflicts with installed Cline Nightly
+				"--disable-extension",
+				"jianguoyun.cline", // Avoid conflicts with our production version
 				"--extensionDevelopmentPath=${workspaceFolder}",
 				"${workspaceFolder}"
 			],
@@ -165,6 +185,27 @@
 			},
 			"console": "integratedTerminal",
 			"internalConsoleOptions": "openOnSessionStart"
+		},
+		{
+			"name": "Open Storybook",
+			"type": "node",
+			"request": "launch",
+			"runtimeExecutable": "npm",
+			"runtimeArgs": [
+				"run",
+				"storybook"
+			],
+			"cwd": "${workspaceFolder}/webview-ui",
+			"console": "integratedTerminal",
+			"internalConsoleOptions": "neverOpen",
+			"serverReadyAction": {
+				"pattern": "Local:.*http://localhost:([0-9]+)",
+				"uriFormat": "http://localhost:%s",
+				"action": "openExternally"
+			},
+			"env": {
+				"IS_DEV": "true"
+			}
 		}
 	]
 }

@@ -1,5 +1,5 @@
 import { WebviewProvider } from "@/core/webview"
-import { Logger } from "../logging/Logger"
+import { Logger } from "@/shared/services/Logger"
 
 /**
  * Shared URI handler that processes both VSCode URI events and HTTP server callbacks
@@ -43,7 +43,7 @@ export class SharedUriHandler {
 						await visibleWebview.controller.handleOpenRouterCallback(code)
 						return true
 					}
-					console.warn("SharedUriHandler: Missing code parameter for OpenRouter callback")
+					Logger.warn("SharedUriHandler: Missing code parameter for OpenRouter callback")
 					return false
 				}
 				case "/requesty": {
@@ -52,7 +52,7 @@ export class SharedUriHandler {
 						await visibleWebview.controller.handleRequestyCallback(code)
 						return true
 					}
-					console.warn("SharedUriHandler: Missing code parameter for Requesty callback")
+					Logger.warn("SharedUriHandler: Missing code parameter for Requesty callback")
 					return false
 				}
 				case "/nutstore": {
@@ -61,7 +61,7 @@ export class SharedUriHandler {
 						await visibleWebview?.controller.handleNutstoreCallback(s)
 						return true
 					}
-					console.log("SharedUriHandler: Missing s param while nutstore auth")
+					Logger.warn("SharedUriHandler: Missing s param while nutstore auth")
 					return false
 				}
 				case "/auth": {
@@ -78,7 +78,7 @@ export class SharedUriHandler {
 					return false
 				}
 				case "/auth/oca": {
-					console.log("SharedUriHandler: Oca Auth callback received:", { path: path })
+					Logger.log("SharedUriHandler: Oca Auth callback received:", { path: path })
 
 					const code = query.get("code")
 					const state = query.get("state")
@@ -87,7 +87,7 @@ export class SharedUriHandler {
 						await visibleWebview.controller.handleOcaAuthCallback(code, state)
 						return true
 					}
-					console.warn("SharedUriHandler: Missing code parameter for auth callback")
+					Logger.warn("SharedUriHandler: Missing code parameter for auth callback")
 					return false
 				}
 				case "/task": {
@@ -97,6 +97,29 @@ export class SharedUriHandler {
 						return true
 					}
 					Logger.warn("SharedUriHandler: Missing prompt parameter for task creation")
+					return false
+				}
+				// Match /mcp-auth/callback/{hash}
+				case path.match(/^\/mcp-auth\/callback\/[^/]+$/)?.input: {
+					const serverHash = path.split("/").pop()
+					const code = query.get("code")
+					const state = query.get("state")
+
+					if (!code || !serverHash) {
+						Logger.warn("SharedUriHandler: Missing code or hash in MCP OAuth callback")
+						return false
+					}
+
+					await visibleWebview.controller.handleMcpOAuthCallback(serverHash, code, state)
+					return true
+				}
+				case "/hicap": {
+					const code = query.get("code")
+					if (code) {
+						await visibleWebview.controller.handleHicapCallback(code)
+						return true
+					}
+					Logger.warn("SharedUriHandler: Missing code parameter for Hicap callback")
 					return false
 				}
 				default:

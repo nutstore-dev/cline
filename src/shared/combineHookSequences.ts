@@ -1,4 +1,4 @@
-import { ClineMessage } from "./ExtensionMessage"
+import type { ClineMessage } from "./ExtensionMessage"
 
 /**
  * Hook metadata extracted from hook message text.
@@ -10,6 +10,22 @@ interface HookMetadata {
 	status: string
 	exitCode?: number
 	hasJsonResponse?: boolean
+}
+
+type HookStatusSay = "hook" | "hook_status"
+type HookOutputStreamSay = "hook_output" | "hook_output_stream"
+
+function getSay(msg: ClineMessage): string | undefined {
+	// Back-compat: older recordings may be deserialized without strict typing.
+	return msg.say as string | undefined
+}
+
+function isHookStatusSay(say: string | undefined): say is HookStatusSay {
+	return say === "hook_status" || say === "hook"
+}
+
+function isHookOutputStreamSay(say: string | undefined): say is HookOutputStreamSay {
+	return say === "hook_output_stream" || say === "hook_output"
 }
 
 // ============================================================================
@@ -28,7 +44,7 @@ function isToolOrCommandMessage(msg: ClineMessage): boolean {
  * Returns null if parsing fails or message is not a hook.
  */
 function parseHookMetadata(hookMessage: ClineMessage): HookMetadata | null {
-	if (hookMessage.say !== "hook" || !hookMessage.text) {
+	if (!isHookStatusSay(getSay(hookMessage)) || !hookMessage.text) {
 		return null
 	}
 
@@ -83,9 +99,10 @@ function combineHookWithOutputs(
 	let hasOutput = false
 	let i = startIndex + 1
 
-	// Collect all hook_output messages until we hit another hook or end of array
-	while (i < messages.length && messages[i].say !== "hook") {
-		if (messages[i].say === "hook_output") {
+	// Collect all hook_output_stream messages until we hit another hook_status/hook or end of array
+	while (i < messages.length && !isHookStatusSay(getSay(messages[i]))) {
+		const say = getSay(messages[i])
+		if (isHookOutputStreamSay(say)) {
 			// Add marker before first output
 			if (!hasOutput) {
 				combinedText += `\n${HOOK_OUTPUT_STRING}`
@@ -119,7 +136,7 @@ function combineAllHooks(messages: ClineMessage[]): ClineMessage[] {
 	const combinedHooksByTs = new Map<number, ClineMessage>()
 
 	for (let i = 0; i < messages.length; i++) {
-		if (messages[i].say === "hook") {
+		if (isHookStatusSay(getSay(messages[i]))) {
 			const { combined, nextIndex } = combineHookWithOutputs(messages[i], i, messages)
 			combinedHooksByTs.set(combined.ts, combined)
 			i = nextIndex - 1 // Adjust for loop increment
@@ -130,8 +147,9 @@ function combineAllHooks(messages: ClineMessage[]): ClineMessage[] {
 	const result: ClineMessage[] = []
 
 	for (const msg of messages) {
-		if (msg.say === "hook_output") {
-		} else if (msg.say === "hook") {
+		const say = getSay(msg)
+		if (isHookOutputStreamSay(say)) {
+		} else if (isHookStatusSay(say)) {
 			// Use combined version
 			result.push(combinedHooksByTs.get(msg.ts) || msg)
 		} else {
@@ -148,20 +166,32 @@ function combineAllHooks(messages: ClineMessage[]): ClineMessage[] {
 // ============================================================================
 
 /**
- * Finds the timestamp of the next tool/command after a given index.
+ * Finds the timestamp of the immediate next tool/command after a given hook.
  *
- * Searches in the original messages array (not filtered) to catch tools
- * that might still be partial. This ensures PreToolUse hooks are matched
- * immediately even if their tool hasn't fully arrived yet.
+ * This function ensures stable hook-to-tool associations by only matching a hook
+ * with the IMMEDIATE next tool (no other hooks or tools in between). This prevents
+ * hooks from being remapped to different tools when new tools are added later.
  *
  * @param hookIndex The starting index to search from
  * @param messages The original messages array (may include partial tools)
- * @returns The timestamp of the next tool, or null if none found
+ * @returns The timestamp of the immediate next tool, or null if none found
  */
-function findNextToolTimestamp(hookIndex: number, messages: ClineMessage[]): number | null {
+function findImmediateNextToolTimestamp(hookIndex: number, messages: ClineMessage[]): number | null {
 	for (let i = hookIndex + 1; i < messages.length; i++) {
-		if (isToolOrCommandMessage(messages[i])) {
-			return messages[i].ts
+		const msg = messages[i]
+
+		// If we hit a tool, this is the immediate next tool
+		if (isToolOrCommandMessage(msg)) {
+			return msg.ts
+		}
+
+		// If we hit another PreToolUse hook before finding a tool, stop searching
+		// This prevents matching a hook to a tool that has its own PreToolUse hook
+		if (isHookStatusSay(getSay(msg))) {
+			const metadata = parseHookMetadata(msg)
+			if (metadata?.hookName === "PreToolUse") {
+				return null
+			}
 		}
 	}
 	return null
@@ -172,6 +202,11 @@ function findNextToolTimestamp(hookIndex: number, messages: ClineMessage[]): num
  *
  * This map indicates which hooks should be moved to appear before which tools.
  * Only PreToolUse hooks are included; PostToolUse hooks stay in their original position.
+ *
+ * A PreToolUse hook should only be mapped to a tool if the hook was created AFTER the
+ * tool already exists in the message stream. This can happen when hooks arrive late
+ * or out of order. If the hook timestamp < tool timestamp, it means the hook
+ * naturally appears before the tool chronologically and should NOT be moved.
  *
  * @param processedMessages Messages after filtering and combining
  * @param originalMessages Original messages array (used to find tools)
@@ -199,18 +234,25 @@ function buildPreToolUseMap(processedMessages: ClineMessage[], originalMessages:
 			continue // Shouldn't happen, but be safe
 		}
 
-		// Find the next tool after this hook in the original array
-		const toolTimestamp = findNextToolTimestamp(hookIndexInOriginal, originalMessages)
+		// Find the immediate next tool after this hook in the original array
+		const toolTimestamp = findImmediateNextToolTimestamp(hookIndexInOriginal, originalMessages)
 		if (toolTimestamp === null) {
 			// No tool found - hook will stay in original position
 			continue
 		}
 
-		// Map this hook to appear before that tool
-		if (!map.has(toolTimestamp)) {
-			map.set(toolTimestamp, [])
+		// CRITICAL FIX: Only map this hook to the tool if it needs to be moved.
+		// A hook only needs moving if its timestamp > tool timestamp (arrived after tool).
+		// If hook timestamp < tool timestamp, the hook naturally appears before the tool
+		// chronologically and should NOT be moved.
+		if (msg.ts > toolTimestamp) {
+			// Hook arrived after tool - needs to be moved before the tool
+			if (!map.has(toolTimestamp)) {
+				map.set(toolTimestamp, [])
+			}
+			map.get(toolTimestamp)!.push(msg)
 		}
-		map.get(toolTimestamp)!.push(msg)
+		// Otherwise, hook is already in correct chronological position - don't move it
 	}
 
 	return map

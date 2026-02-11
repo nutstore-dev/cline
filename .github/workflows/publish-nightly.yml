@@ -55,11 +55,9 @@ jobs:
                   key: ${{ runner.os }}-npm-webview-${{ hashFiles('webview-ui/package-lock.json') }}
 
             - name: Install root dependencies
-              if: steps.root-cache.outputs.cache-hit != 'true'
               run: npm ci --include=optional
 
             - name: Install webview-ui dependencies
-              if: steps.webview-cache.outputs.cache-hit != 'true'
               run: cd webview-ui && npm ci --include=optional
 
             - name: Install Publishing Tools
@@ -74,8 +72,8 @@ jobs:
                   CLINE_ENVIRONMENT: production
                   # OpenTelemetry production defaults (can be overridden at runtime)
                   OTEL_TELEMETRY_ENABLED: ${{ secrets.OTEL_TELEMETRY_ENABLED }}
-                  OTEL_LOGS_EXPORTER: console,otlp
-                  OTEL_METRICS_EXPORTER: console,otlp
+                  OTEL_LOGS_EXPORTER: otlp
+                  OTEL_METRICS_EXPORTER: otlp
                   OTEL_EXPORTER_OTLP_PROTOCOL: ${{ secrets.OTEL_EXPORTER_OTLP_PROTOCOL }}
                   OTEL_EXPORTER_OTLP_ENDPOINT: ${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
                   OTEL_EXPORTER_OTLP_HEADERS: ${{ secrets.OTEL_EXPORTER_OTLP_HEADERS }}

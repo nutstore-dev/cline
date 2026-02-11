@@ -1,14 +1,16 @@
-import { Anthropic } from "@anthropic-ai/sdk"
+import type { Anthropic } from "@anthropic-ai/sdk"
 import {
 	CLAUDE_SONNET_1M_SUFFIX,
-	ModelInfo,
+	type ModelInfo,
 	OPENROUTER_PROVIDER_PREFERENCES,
+	openRouterClaudeOpus461mModelId,
 	openRouterClaudeSonnet41mModelId,
 	openRouterClaudeSonnet451mModelId,
 } from "@shared/api"
-import OpenAI from "openai"
-import { ChatCompletionTool } from "openai/resources/chat/completions"
-import { convertToOpenAiMessages } from "./openai-format"
+import { shouldSkipReasoningForModel } from "@utils/model-utils"
+import type OpenAI from "openai"
+import type { ChatCompletionTool } from "openai/resources/chat/completions"
+import { convertToOpenAiMessages, sanitizeGeminiMessages } from "./openai-format"
 import { convertToR1Format } from "./r1-format"
 import { getOpenAIToolParams } from "./tool-call-processor"
 
@@ -21,6 +23,7 @@ export async function createOpenRouterStream(
 	thinkingBudgetTokens?: number,
 	openRouterProviderSorting?: string,
 	tools?: Array<ChatCompletionTool>,
+	geminiThinkingLevel?: string,
 	taskId?: string,
 ) {
 	// Convert Anthropic messages to OpenAI format
@@ -29,21 +32,29 @@ export async function createOpenRouterStream(
 		...convertToOpenAiMessages(messages),
 	]
 
-	const isClaudeSonnet1m = model.id === openRouterClaudeSonnet41mModelId || model.id === openRouterClaudeSonnet451mModelId
-	if (isClaudeSonnet1m) {
+	const isClaude1m =
+		model.id === openRouterClaudeSonnet41mModelId ||
+		model.id === openRouterClaudeSonnet451mModelId ||
+		model.id === openRouterClaudeOpus461mModelId
+	if (isClaude1m) {
 		// remove the custom :1m suffix, to create the model id openrouter API expects
 		model.id = model.id.slice(0, -CLAUDE_SONNET_1M_SUFFIX.length)
 	}
+
+	// Sanitize messages for Gemini models (removes tool_calls without reasoning_details)
+	openAiMessages = sanitizeGeminiMessages(openAiMessages, model.id)
 
 	// prompt caching: https://openrouter.ai/docs/prompt-caching
 	// this was initially specifically for claude models (some models may 'support prompt caching' automatically without this)
 	// handles direct model.id match logic
 	switch (model.id) {
+		case "anthropic/claude-opus-4.6":
 		case "anthropic/claude-haiku-4.5":
 		case "anthropic/claude-4.5-haiku":
 		case "anthropic/claude-sonnet-4.5":
 		case "anthropic/claude-4.5-sonnet": // OpenRouter accidentally included this in model list for a brief moment, and users may be using this model id. And to support prompt caching, we need to add it here.
 		case "anthropic/claude-sonnet-4":
+		case "anthropic/claude-opus-4.5":
 		case "anthropic/claude-opus-4.1":
 		case "anthropic/claude-opus-4":
 		case "anthropic/claude-3.7-sonnet":
@@ -63,13 +74,16 @@ export async function createOpenRouterStream(
 		case "anthropic/claude-3-haiku:beta":
 		case "anthropic/claude-3-opus":
 		case "anthropic/claude-3-opus:beta":
+		case "minimax/minimax-m2":
+		case "minimax/minimax-m2.1":
+		case "minimax/minimax-m2.1-lightning":
 			openAiMessages[0] = {
 				role: "system",
 				content: [
 					{
 						type: "text",
 						text: systemPrompt,
-						// @ts-ignore-next-line
+						// @ts-expect-error-next-line
 						cache_control: { type: "ephemeral" },
 					},
 				],
@@ -89,7 +103,7 @@ export async function createOpenRouterStream(
 						lastTextPart = { type: "text", text: "..." }
 						msg.content.push(lastTextPart)
 					}
-					// @ts-ignore-next-line
+					// @ts-expect-error-next-line
 					lastTextPart["cache_control"] = { type: "ephemeral" }
 				}
 			})
@@ -102,11 +116,13 @@ export async function createOpenRouterStream(
 	// (models usually default to max tokens allowed)
 	let maxTokens: number | undefined
 	switch (model.id) {
+		case "anthropic/claude-opus-4.6":
 		case "anthropic/claude-haiku-4.5":
 		case "anthropic/claude-4.5-haiku":
 		case "anthropic/claude-sonnet-4.5":
 		case "anthropic/claude-4.5-sonnet":
 		case "anthropic/claude-sonnet-4":
+		case "anthropic/claude-opus-4.5":
 		case "anthropic/claude-opus-4.1":
 		case "anthropic/claude-opus-4":
 		case "anthropic/claude-3.7-sonnet":
@@ -139,14 +155,20 @@ export async function createOpenRouterStream(
 		topP = 0.95
 		openAiMessages = convertToR1Format([{ role: "user", content: systemPrompt }, ...messages])
 	}
+	if (model.id.startsWith("google/gemini-3.0") || model.id === "google/gemini-3.0") {
+		// Recommended value from google
+		temperature = 1.0
+	}
 
-	let reasoning: { max_tokens?: number; effort?: string } | undefined
+	let reasoning: { max_tokens: number } | undefined
 	switch (model.id) {
+		case "anthropic/claude-opus-4.6":
 		case "anthropic/claude-haiku-4.5":
 		case "anthropic/claude-4.5-haiku":
 		case "anthropic/claude-sonnet-4.5":
 		case "anthropic/claude-4.5-sonnet":
 		case "anthropic/claude-sonnet-4":
+		case "anthropic/claude-opus-4.5":
 		case "anthropic/claude-opus-4.1":
 		case "anthropic/claude-opus-4":
 		case "anthropic/claude-3.7-sonnet":
@@ -162,16 +184,16 @@ export async function createOpenRouterStream(
 			}
 			break
 		default:
-			if (thinkingBudgetTokens && model.info?.thinkingConfig && thinkingBudgetTokens > 0) {
+			if (
+				thinkingBudgetTokens &&
+				model.info?.thinkingConfig &&
+				thinkingBudgetTokens > 0 &&
+				!(model.id.includes("gemini-3") && geminiThinkingLevel)
+			) {
 				temperature = undefined // extended thinking does not support non-1 temperature
 				reasoning = { max_tokens: thinkingBudgetTokens }
 				break
 			}
-	}
-
-	// Add effort parameter if reasoningEffort is provided, keep existing max_tokens if any
-	if (reasoningEffort) {
-		reasoning = { ...reasoning, effort: reasoningEffort || "medium" }
 	}
 
 	const providerPreferences = OPENROUTER_PROVIDER_PREFERENCES[model.id]
@@ -179,7 +201,10 @@ export async function createOpenRouterStream(
 		openRouterProviderSorting = undefined
 	}
 
-	// @ts-ignore-next-line
+	// Skip reasoning for models that don't support it (e.g., devstral, grok-4)
+	const includeReasoning = !shouldSkipReasoningForModel(model.id)
+
+	// @ts-expect-error-next-line
 	const stream = await client.chat.completions.create(
 		{
 			model: model.id,
@@ -189,23 +214,20 @@ export async function createOpenRouterStream(
 			messages: openAiMessages,
 			stream: true,
 			stream_options: { include_usage: true },
-			include_reasoning: true,
+			include_reasoning: includeReasoning,
+			...(model.id.startsWith("openai/o") ? { reasoning_effort: reasoningEffort || "medium" } : {}),
 			...(reasoning ? { reasoning } : {}),
 			...(openRouterProviderSorting && !providerPreferences ? { provider: { sort: openRouterProviderSorting } } : {}),
 			...(providerPreferences ? { provider: providerPreferences } : {}),
-			...(isClaudeSonnet1m
-				? {
-						provider: {
-							order: ["anthropic", "google-vertex/global"],
-							allow_fallbacks: false,
-						},
-					}
-				: {}),
+			...(isClaude1m ? { provider: { order: ["anthropic", "google-vertex/global"], allow_fallbacks: false } } : {}),
 			...getOpenAIToolParams(tools),
+			...(model.id.includes("gemini-3") && geminiThinkingLevel
+				? { thinking_config: { thinking_level: geminiThinkingLevel, include_thoughts: true } }
+				: {}),
 		},
 		{
 			headers: {
-				taskId,
+				...(taskId ? { "X-Task-ID": taskId } : {}),
 			},
 		},
 	)

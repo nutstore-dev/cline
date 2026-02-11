@@ -4,6 +4,7 @@ import { globby } from "globby"
 import * as path from "path"
 import simpleGit, { type SimpleGit } from "simple-git"
 import { telemetryService } from "@/services/telemetry"
+import { Logger } from "@/shared/services/Logger"
 import { getLfsPatterns, writeExcludesFile } from "./CheckpointExclusions"
 
 interface CheckpointAddResult {
@@ -55,7 +56,7 @@ export class GitOperations {
 	 * - LFS pattern setup fails
 	 */
 	public async initShadowGit(gitPath: string, cwd: string, taskId: string): Promise<string> {
-		console.info(`Initializing shadow git`)
+		Logger.info(`Initializing shadow git`)
 
 		// If repo exists, just verify worktree
 		if (await fileExistsAtPath(gitPath)) {
@@ -64,7 +65,7 @@ export class GitOperations {
 			if (worktree.value !== cwd) {
 				throw new Error("Checkpoints can only be used in the original workspace: " + worktree.value)
 			}
-			console.warn(`Using existing shadow git at ${gitPath}`)
+			Logger.warn(`Using existing shadow git at ${gitPath}`)
 
 			// shadow git repo already exists, but update the excludes just in case
 			await writeExcludesFile(gitPath, await getLfsPatterns(this.cwd))
@@ -75,7 +76,7 @@ export class GitOperations {
 		// Initialize new repo
 		const startTime = performance.now()
 		const checkpointsDir = path.dirname(gitPath)
-		console.warn(`Creating new shadow git in ${checkpointsDir}`)
+		Logger.warn(`Creating new shadow git in ${checkpointsDir}`)
 
 		const git = simpleGit(checkpointsDir)
 		await git.init()
@@ -92,7 +93,7 @@ export class GitOperations {
 
 		const addFilesResult = await this.addCheckpointFiles(git)
 		if (!addFilesResult.success) {
-			console.error("Failed to add at least one file(s) to checkpoints shadow git")
+			Logger.error("Failed to add at least one file(s) to checkpoints shadow git")
 			throw new Error("Failed to add at least one file(s) to checkpoints shadow git")
 		}
 
@@ -102,7 +103,7 @@ export class GitOperations {
 		const durationMs = Math.round(performance.now() - startTime)
 		telemetryService.captureCheckpointUsage(taskId, "shadow_git_initialized", durationMs)
 
-		console.warn(`Shadow git initialization completed`)
+		Logger.warn(`Shadow git initialization completed`)
 
 		return gitPath
 	}
@@ -122,7 +123,7 @@ export class GitOperations {
 			const worktree = await git.getConfig("core.worktree")
 			return worktree.value || undefined
 		} catch (error) {
-			console.error("Failed to get shadow git config worktree:", error)
+			Logger.error("Failed to get shadow git config worktree:", error)
 			return undefined
 		}
 	}
@@ -154,9 +155,9 @@ export class GitOperations {
 
 			try {
 				await fs.rename(fullPath, newPath)
-				console.log(`CheckpointTracker ${disable ? "disabled" : "enabled"} nested git repo ${gitPath}`)
+				Logger.log(`CheckpointTracker ${disable ? "disabled" : "enabled"} nested git repo ${gitPath}`)
 			} catch (error) {
-				console.error(`CheckpointTracker failed to ${disable ? "disable" : "enable"} nested git repo ${gitPath}:`, error)
+				Logger.error(`CheckpointTracker failed to ${disable ? "disable" : "enable"} nested git repo ${gitPath}:`, error)
 			}
 		}
 	}
@@ -186,14 +187,14 @@ export class GitOperations {
 		try {
 			// Update exclude patterns before each commit
 			await this.renameNestedGitRepos(true)
-			console.info("Starting checkpoint add operation...")
+			Logger.info("Starting checkpoint add operation...")
 
 			// Attempt to add all files. Any files with permissions errors will not be added,
 			// but the process will proceed and add the rest (--ignore-errors).
 			try {
 				await git.add([".", "--ignore-errors"])
 				const durationMs = Math.round(performance.now() - startTime)
-				console.debug(`Checkpoint add operation completed in ${durationMs}ms`)
+				Logger.debug(`Checkpoint add operation completed in ${durationMs}ms`)
 				return { success: true }
 			} catch (_error) {
 				return { success: false }
@@ -233,7 +234,7 @@ export class GitOperations {
 			])
 			return gitPaths
 		} catch (error) {
-			console.warn("Globby operation failed or timed out:", error)
+			Logger.warn("Globby operation failed or timed out:", error)
 			// Return empty array as fallback - this prevents the hanging but may miss some nested repos
 			// In most cases, this is acceptable as nested git repos are less common
 			return []

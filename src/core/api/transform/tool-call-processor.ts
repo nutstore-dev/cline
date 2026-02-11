@@ -3,7 +3,7 @@ import type {
 	ChatCompletionToolChoiceOption,
 	ChatCompletionTool as OpenAITool,
 } from "openai/resources/chat/completions"
-import { Logger } from "@/services/logging/Logger"
+import { Logger } from "@/shared/services/Logger"
 import type { ApiStreamToolCallsChunk } from "./stream"
 
 /**
@@ -74,12 +74,12 @@ export class ToolCallProcessor {
 	}
 }
 
-export function getOpenAIToolParams(tools?: OpenAITool[]) {
+export function getOpenAIToolParams(tools?: OpenAITool[], enableParallelToolCalls = false) {
 	return tools?.length
 		? {
 				tools,
 				tool_choice: tools ? ("auto" as ChatCompletionToolChoiceOption) : undefined,
-				parallel_tool_calls: tools ? true : undefined,
+				parallel_tool_calls: enableParallelToolCalls ? true : false,
 			}
 		: {
 				tools: undefined,

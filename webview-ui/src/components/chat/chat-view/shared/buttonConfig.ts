@@ -213,6 +213,12 @@ export function getButtonConfig(message: ClineMessage | undefined, _mode: Mode =
 	const isStreaming = message.partial === true
 	const isError = message?.ask ? errorTypes.includes(message.ask) : false
 
+	// Special case: command_output should show "Proceed While Running" button even while streaming
+	// This allows terminal output to stream while still showing the action button
+	if (message.type === "ask" && message.ask === "command_output") {
+		return BUTTON_CONFIGS.command_output
+	}
+
 	// Handle partial/streaming messages first (most common during task execution)
 	// This must be checked before any other conditions to ensure streaming state takes precedence
 	if (isStreaming && !isError) {
@@ -233,7 +239,7 @@ export function getButtonConfig(message: ClineMessage | undefined, _mode: Mode =
 				// Only parse JSON if we need to determine save vs approve
 				try {
 					const tool = JSON.parse(message.text || "{}") as ClineSayTool
-					if (tool.tool === "editedExistingFile" || tool.tool === "newFileCreated") {
+					if (tool.tool === "editedExistingFile" || tool.tool === "newFileCreated" || tool.tool === "fileDeleted") {
 						return BUTTON_CONFIGS.tool_save
 					}
 				} catch {
@@ -282,6 +288,12 @@ export function getButtonConfig(message: ClineMessage | undefined, _mode: Mode =
 	// Handle say messages (typically don't require buttons except in special cases)
 	if (message.type === "say" && message.say === "api_req_started") {
 		return BUTTON_CONFIGS.api_req_active
+	}
+
+	// Special case: command_output say messages should show "Proceed While Running" button
+	// This allows terminal output to stream while still showing the action button
+	if (message.type === "say" && message.say === "command_output") {
+		return BUTTON_CONFIGS.command_output
 	}
 
 	return BUTTON_CONFIGS.partial

@@ -1,11 +1,14 @@
 import { Anthropic } from "@anthropic-ai/sdk"
-import { Tool as AnthropicTool } from "@anthropic-ai/sdk/resources/index"
-import { Stream as AnthropicStream } from "@anthropic-ai/sdk/streaming"
-import { MinimaxModelId, ModelInfo, minimaxDefaultModelId, minimaxModels } from "@/shared/api"
-import { ClineTool } from "@/shared/tools"
-import { ApiHandler, CommonApiHandlerOptions } from "../index"
+import type { Tool as AnthropicTool } from "@anthropic-ai/sdk/resources/index"
+import type { Stream as AnthropicStream } from "@anthropic-ai/sdk/streaming"
+import { buildExternalBasicHeaders } from "@/services/EnvUtils"
+import { type MinimaxModelId, type ModelInfo, minimaxDefaultModelId, minimaxModels } from "@/shared/api"
+import type { ClineStorageMessage } from "@/shared/messages/content"
+import { fetch } from "@/shared/net"
+import type { ClineTool } from "@/shared/tools"
+import type { ApiHandler, CommonApiHandlerOptions } from "../index"
 import { withRetry } from "../retry"
-import { ApiStream } from "../transform/stream"
+import type { ApiStream } from "../transform/stream"
 
 interface MinimaxHandlerOptions extends CommonApiHandlerOptions {
 	minimaxApiKey?: string
@@ -28,12 +31,15 @@ export class MinimaxHandler implements ApiHandler {
 				throw new Error("MiniMax API key is required")
 			}
 			try {
+				const externalHeaders = buildExternalBasicHeaders()
 				this.client = new Anthropic({
 					apiKey: this.options.minimaxApiKey,
 					baseURL:
 						this.options.minimaxApiLine === "china"
 							? "https://api.minimaxi.com/anthropic"
 							: "https://api.minimax.io/anthropic",
+					defaultHeaders: externalHeaders,
+					fetch, // Use configured fetch with proxy support
 				})
 			} catch (error) {
 				throw new Error(`Error creating MiniMax client: ${error.message}`)
@@ -43,7 +49,7 @@ export class MinimaxHandler implements ApiHandler {
 	}
 
 	@withRetry()
-	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[], tools?: ClineTool[]): ApiStream {
+	async *createMessage(systemPrompt: string, messages: ClineStorageMessage[], tools?: ClineTool[]): ApiStream {
 		const client = this.ensureClient()
 		const model = this.getModel()
 
@@ -64,12 +70,11 @@ export class MinimaxHandler implements ApiHandler {
 			tool_choice: nativeToolsOn ? { type: "any" } : undefined,
 		})
 
-		let thinkingDeltaAccumulator = ""
 		const lastStartedToolCall = { id: "", name: "", arguments: "" }
 
 		for await (const chunk of stream) {
 			switch (chunk?.type) {
-				case "message_start":
+				case "message_start": {
 					// tells us cache reads/writes/input/output
 					const usage = chunk.message.usage
 					yield {
@@ -80,6 +85,7 @@ export class MinimaxHandler implements ApiHandler {
 						cacheReadTokens: usage.cache_read_input_tokens || undefined,
 					}
 					break
+				}
 				case "message_delta":
 					// tells us stop_reason, stop_sequence, and output tokens along the way and at the end of the message
 					yield {
@@ -98,13 +104,11 @@ export class MinimaxHandler implements ApiHandler {
 								type: "reasoning",
 								reasoning: chunk.content_block.thinking || "",
 							}
-							const thinking = chunk.content_block.thinking
-							const signature = chunk.content_block.signature
-							if (thinking && signature) {
+							if (chunk.content_block.thinking && chunk.content_block.signature) {
 								yield {
-									type: "ant_thinking",
-									thinking,
-									signature,
+									type: "reasoning",
+									reasoning: chunk.content_block.thinking,
+									signature: chunk.content_block.signature,
 								}
 							}
 							break
@@ -113,10 +117,7 @@ export class MinimaxHandler implements ApiHandler {
 							yield {
 								type: "reasoning",
 								reasoning: "[Redacted thinking block]",
-							}
-							yield {
-								type: "ant_redacted_thinking",
-								data: chunk.content_block.data,
+								redacted_data: chunk.content_block.data,
 							}
 							break
 						case "tool_use":
@@ -145,20 +146,19 @@ export class MinimaxHandler implements ApiHandler {
 				case "content_block_delta":
 					switch (chunk.delta.type) {
 						case "thinking_delta":
-							// 'reasoning' type just displays in the UI, but ant_thinking will be used to send the thinking traces back to the API
+							// 'reasoning' type just displays in the UI, but reasoning with signature will be used to send the thinking traces back to the API
 							yield {
 								type: "reasoning",
 								reasoning: chunk.delta.thinking,
 							}
-							thinkingDeltaAccumulator += chunk.delta.thinking
 							break
 						case "signature_delta":
 							// It's used when sending the thinking block back to the API
 							// API expects this in completed form, not as array of deltas
-							if (thinkingDeltaAccumulator && chunk.delta.signature) {
+							if (chunk.delta.signature) {
 								yield {
-									type: "ant_thinking",
-									thinking: thinkingDeltaAccumulator,
+									type: "reasoning",
+									reasoning: "",
 									signature: chunk.delta.signature,
 								}
 							}

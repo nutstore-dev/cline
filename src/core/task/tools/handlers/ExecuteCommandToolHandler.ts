@@ -3,9 +3,8 @@ import { formatResponse } from "@core/prompts/responses"
 import { WorkspacePathAdapter } from "@core/workspace/WorkspacePathAdapter"
 import { showSystemNotification } from "@integrations/notifications"
 import { COMMAND_REQ_APP_STRING } from "@shared/combineCommandSequences"
-import { ClineAsk } from "@shared/ExtensionMessage"
+import type { ClineAsk } from "@shared/ExtensionMessage"
 import { arePathsEqual } from "@utils/path"
-import { fixModelHtmlEscaping } from "@utils/string"
 import { telemetryService } from "@/services/telemetry"
 import { ClineDefaultTool } from "@/shared/tools"
 import type { ToolResponse } from "../../index"
@@ -14,6 +13,7 @@ import type { IFullyManagedTool } from "../ToolExecutorCoordinator"
 import type { ToolValidator } from "../ToolValidator"
 import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
+import { applyModelContentFixes } from "../utils/ModelContentProcessor"
 import { ToolResultUtils } from "../utils/ToolResultUtils"
 
 // Default timeout for commands in yolo mode and background exec mode
@@ -39,11 +39,10 @@ export class ExecuteCommandToolHandler implements IFullyManagedTool {
 			// since it may become an ask based on the requires_approval parameter
 			// So we wait for the complete block
 			return
-		} else {
-			await uiHelpers
-				.ask("command" as ClineAsk, uiHelpers.removeClosingTag(block, "command", command), block.partial)
-				.catch(() => {})
 		}
+		await uiHelpers
+			.ask("command" as ClineAsk, uiHelpers.removeClosingTag(block, "command", command), block.partial)
+			.catch(() => {})
 	}
 
 	async execute(config: TaskConfig, block: ToolUse): Promise<ToolResponse> {
@@ -73,13 +72,13 @@ export class ExecuteCommandToolHandler implements IFullyManagedTool {
 
 		// Handling of timeout while in yolo mode or background exec mode
 		if (config.yoloModeToggled || config.vscodeTerminalExecutionMode === "backgroundExec") {
-			const parsed = timeoutParam ? parseInt(timeoutParam, 10) : NaN
+			const parsed = timeoutParam ? Number.parseInt(timeoutParam, 10) : Number.NaN
 			timeoutSeconds = parsed > 0 ? parsed : DEFAULT_COMMAND_TIMEOUT_SECONDS
 		}
 
 		// Pre-process command for certain models
 		if (config.api.getModel().id.includes("gemini")) {
-			command = fixModelHtmlEscaping(command)
+			command = applyModelContentFixes(command)
 		}
 
 		// Handle multi-workspace command execution
@@ -113,6 +112,26 @@ export class ExecuteCommandToolHandler implements IFullyManagedTool {
 				command = actualCommand
 			}
 			// If no hint, use primary workspace (cwd)
+		}
+
+		// Check command permission validation (CLINE_COMMAND_PERMISSIONS env var)
+		const permissionResult = config.services.commandPermissionController.validateCommand(actualCommand)
+		if (!permissionResult.allowed) {
+			let errorMessage: string
+			if (permissionResult.failedSegment) {
+				errorMessage =
+					`Command "${actualCommand}" was denied by CLINE_COMMAND_PERMISSIONS. ` +
+					`Segment "${permissionResult.failedSegment}" ${permissionResult.reason}.`
+			} else {
+				const matchedPattern = permissionResult.matchedPattern
+					? ` (matched pattern: ${permissionResult.matchedPattern})`
+					: ""
+				errorMessage =
+					`Command "${actualCommand}" was denied by CLINE_COMMAND_PERMISSIONS. ` +
+					`Reason: ${permissionResult.reason}${matchedPattern}`
+			}
+			await config.callbacks.say("command_permission_denied", errorMessage)
+			return formatResponse.toolError(formatResponse.permissionDeniedError(errorMessage))
 		}
 
 		// Check clineignore validation for command
@@ -166,6 +185,7 @@ export class ExecuteCommandToolHandler implements IFullyManagedTool {
 				true,
 				true,
 				workspaceContext,
+				block.isNativeToolCall,
 			)
 		} else {
 			// Manual approval flow
@@ -188,6 +208,7 @@ export class ExecuteCommandToolHandler implements IFullyManagedTool {
 					false,
 					false,
 					workspaceContext,
+					block.isNativeToolCall,
 				)
 				return formatResponse.toolDenied()
 			}
@@ -199,7 +220,20 @@ export class ExecuteCommandToolHandler implements IFullyManagedTool {
 				false,
 				true,
 				workspaceContext,
+				block.isNativeToolCall,
 			)
+		}
+
+		// Run PreToolUse hook after approval but before execution
+		try {
+			const { ToolHookUtils } = await import("../utils/ToolHookUtils")
+			await ToolHookUtils.runPreToolUseIfEnabled(config, block)
+		} catch (error) {
+			const { PreToolUseHookCancellationError } = await import("@core/hooks/PreToolUseHookCancellationError")
+			if (error instanceof PreToolUseHookCancellationError) {
+				return formatResponse.toolDenied()
+			}
+			throw error
 		}
 
 		// Setup timeout notification for long-running auto-approved commands

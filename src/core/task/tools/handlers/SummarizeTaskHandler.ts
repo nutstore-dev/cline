@@ -1,11 +1,15 @@
 import type { ToolUse } from "@core/assistant-message"
+import { getHooksEnabledSafe } from "@core/hooks/hooks-utils"
+import { executePreCompactHookWithCleanup, HookCancellationError } from "@core/hooks/precompact-executor"
 import { continuationPrompt } from "@core/prompts/contextManagement"
 import { formatResponse } from "@core/prompts/responses"
 import { ensureTaskDirectoryExists } from "@core/storage/disk"
+import { StateManager } from "@core/storage/StateManager"
 import { resolveWorkspacePath } from "@core/workspace"
 import { extractFileContent } from "@integrations/misc/extract-file-content"
-import { ClineSayTool } from "@shared/ExtensionMessage"
+import type { ClineSayTool } from "@shared/ExtensionMessage"
 import { telemetryService } from "@/services/telemetry"
+import { Logger } from "@/shared/services/Logger"
 import { ClineDefaultTool } from "@/shared/tools"
 import type { ToolResponse } from "../../index"
 import type { IPartialBlockHandler, IToolHandler } from "../ToolExecutorCoordinator"
@@ -33,6 +37,68 @@ export class SummarizeTaskHandler implements IToolHandler, IPartialBlockHandler 
 			}
 
 			config.taskState.consecutiveMistakeCount = 0
+
+			// Variable to store context modification from PreCompact hook
+			let hookContextModification: string | undefined
+
+			// Run PreCompact hook right before showing the condensing message
+			const hooksEnabled = getHooksEnabledSafe()
+			if (hooksEnabled) {
+				try {
+					// Determine compaction strategy
+					const useAutoCondense = StateManager.get().getGlobalSettingsKey("useAutoCondense")
+					const strategy = useAutoCondense ? "auto-condense" : "standard-truncation-firstpair"
+
+					const apiHistory = config.messageState.getApiConversationHistory()
+
+					const result = await executePreCompactHookWithCleanup({
+						taskId: config.taskId,
+						ulid: config.ulid,
+						apiConversationHistory: apiHistory,
+						conversationHistoryDeletedRange: config.taskState.conversationHistoryDeletedRange,
+						contextManager: config.services.contextManager,
+						clineMessages: config.messageState.getClineMessages(),
+						messageStateHandler: config.messageState,
+						compactionStrategy: strategy,
+						say: config.callbacks.say,
+						setActiveHookExecution: async (hookExecution) => {
+							if (hookExecution) {
+								await config.callbacks.setActiveHookExecution(hookExecution)
+							}
+						},
+						clearActiveHookExecution: config.callbacks.clearActiveHookExecution,
+						postStateToWebview: config.callbacks.postStateToWebview,
+						taskState: config.taskState,
+						cancelTask: config.callbacks.cancelTask,
+						hooksEnabled,
+					})
+
+					// Hook completed successfully - capture context modification if provided
+					if (result.contextModification) {
+						hookContextModification = result.contextModification
+						Logger.log(`[PreCompact] Hook provided context modification for task ${config.taskId}`)
+					}
+				} catch (error) {
+					// Check if this is a hook cancellation error
+					if (error instanceof HookCancellationError) {
+						// Hook was cancelled - show message and return early without executing summarization
+						// (State already saved and task already cancelled by executePreCompactHookWithCleanup)
+						await config.callbacks.say(
+							"error",
+							"Context compaction was cancelled by PreCompact hook. Task has been aborted.",
+						)
+						return "Context compaction was cancelled. Task has been aborted."
+					}
+
+					// Graceful degradation: Show warning but continue with compaction
+					// Hook UI already shows "Failed" status with error details
+					await config.callbacks.say(
+						"error",
+						`PreCompact hook failed, continuing with compaction: ${error instanceof Error ? error.message : String(error)}`,
+					)
+					Logger.error("[PreCompact] Hook execution failed, continuing with compaction:", error)
+				}
+			}
 
 			// Show completed summary in tool UI
 			const completeMessage = JSON.stringify({
@@ -126,7 +192,7 @@ export class SummarizeTaskHandler implements IToolHandler, IPartialBlockHandler 
 							}
 						} catch (error) {
 							// File read failed - log but continue with other files
-							console.error(`Failed to read ${relPath} during summarization:`, error)
+							Logger.error(`Failed to read ${relPath} during summarization:`, error)
 						}
 					}
 					// If not auto-approved, skip silently
@@ -140,7 +206,16 @@ export class SummarizeTaskHandler implements IToolHandler, IPartialBlockHandler 
 					`\n\nThe following files were automatically read based on the files listed in the Required Files section: ${fileMentionString}. These are the latest versions of these files - you should reference them directly and not re-read them:` +
 					fileContents
 			}
-			const toolResult = formatResponse.toolResult(continuationPrompt(context) + fileContents)
+
+			// Build the tool result with all components
+			let toolResultContent = continuationPrompt(context) + fileContents
+
+			// Append hook's context modification if provided
+			if (hookContextModification) {
+				toolResultContent += `\n\n[Context Modification from PreCompact Hook]\n${hookContextModification}`
+			}
+
+			const toolResult = formatResponse.toolResult(toolResultContent)
 
 			// Handle context management
 			const apiConversationHistory = config.messageState.getApiConversationHistory()
@@ -171,9 +246,15 @@ export class SummarizeTaskHandler implements IToolHandler, IPartialBlockHandler 
 			)
 
 			if (telemetryData) {
+				// Extract provider information for telemetry
+				const apiConfig = config.services.stateManager.getApiConfiguration()
+				const currentMode = config.services.stateManager.getGlobalSettingsKey("mode")
+				const provider = (currentMode === "plan" ? apiConfig.planModeApiProvider : apiConfig.actModeApiProvider) as string
+
 				telemetryService.captureSummarizeTask(
 					config.ulid,
 					config.api.getModel().id,
+					provider,
 					telemetryData.tokensUsed,
 					telemetryData.maxContextWindow,
 				)

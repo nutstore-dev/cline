@@ -4,18 +4,18 @@ import { Empty } from "@shared/proto/cline/common"
 import {
 	PlanActMode,
 	OpenaiReasoningEffort as ProtoOpenaiReasoningEffort,
-	UpdateSettingsRequestCli,
+	type UpdateSettingsRequestCli,
 } from "@shared/proto/cline/state"
 import { convertProtoToApiProvider } from "@shared/proto-conversions/models/api-configuration-conversion"
-import { Settings } from "@shared/storage/state-keys"
-import { TelemetrySetting } from "@shared/TelemetrySetting"
+import type { Settings } from "@shared/storage/state-keys"
+import type { TelemetrySetting } from "@shared/TelemetrySetting"
 import { ClineEnv } from "@/config"
 import { HostProvider } from "@/hosts/host-provider"
-import { TerminalInfo } from "@/integrations/terminal/TerminalRegistry"
 import { ShowMessageType } from "@/shared/proto/host/window"
-import { Mode, OpenaiReasoningEffort } from "@/shared/storage/types"
+import { Logger } from "@/shared/services/Logger"
+import type { Mode, OpenaiReasoningEffort } from "@/shared/storage/types"
 import { telemetryService } from "../../../services/telemetry"
-import { Controller } from ".."
+import type { Controller } from ".."
 import { accountLogoutClicked } from "../account/accountLogoutClicked"
 
 /**
@@ -65,6 +65,8 @@ export async function updateSettingsCli(controller: Controller, request: UpdateS
 				telemetrySetting,
 				yoloModeToggled,
 				useAutoCondense,
+				clineWebToolsEnabled,
+				worktreesEnabled,
 				focusChainSettings,
 				browserSettings,
 				defaultTerminalProfile,
@@ -78,7 +80,7 @@ export async function updateSettingsCli(controller: Controller, request: UpdateS
 
 			controller.stateManager.setGlobalStateBatch(filteredSettings)
 
-			console.log("autoApprovalSettings", controller.stateManager.getGlobalSettingsKey("autoApprovalSettings"))
+			Logger.log("autoApprovalSettings", controller.stateManager.getGlobalSettingsKey("autoApprovalSettings"))
 
 			// Handle fields requiring type conversion from generated protobuf types to application types
 			if (autoApprovalSettings) {
@@ -159,6 +161,19 @@ export async function updateSettingsCli(controller: Controller, request: UpdateS
 				controller.stateManager.setGlobalState("useAutoCondense", useAutoCondense)
 			}
 
+			// Update Cline web tools setting (requires telemetry)
+			if (clineWebToolsEnabled !== undefined) {
+				if (controller.task) {
+					telemetryService.captureClineWebToolsToggle(controller.task.ulid, clineWebToolsEnabled)
+				}
+				controller.stateManager.setGlobalState("clineWebToolsEnabled", clineWebToolsEnabled)
+			}
+
+			// Update worktrees setting
+			if (worktreesEnabled !== undefined) {
+				controller.stateManager.setGlobalState("worktreesEnabled", worktreesEnabled)
+			}
+
 			// Update focus chain settings (requires telemetry on state change)
 			if (focusChainSettings !== undefined) {
 				const currentSettings = controller.stateManager.getGlobalSettingsKey("focusChainSettings")
@@ -215,7 +230,7 @@ export async function updateSettingsCli(controller: Controller, request: UpdateS
 				controller.stateManager.setGlobalState("defaultTerminalProfile", profileId)
 
 				let closedCount = 0
-				let busyTerminals: TerminalInfo[] = []
+				let busyTerminalsCount = 0
 
 				// Update the terminal manager of the current task if it exists
 				if (controller.task) {
@@ -225,9 +240,10 @@ export async function updateSettingsCli(controller: Controller, request: UpdateS
 					}
 
 					// Call the updated setDefaultTerminalProfile method that returns closed terminal info
-					const result = controller.task.terminalManager.setDefaultTerminalProfile(profileId)
+					// Use `as any` to handle type incompatibility between VSCode's TerminalInfo and standalone TerminalInfo
+					const result = controller.task.terminalManager.setDefaultTerminalProfile(profileId) as any
 					closedCount = result.closedCount
-					busyTerminals = result.busyTerminals
+					busyTerminalsCount = result.busyTerminals?.length ?? 0
 
 					// Show information message if terminals were closed
 					if (closedCount > 0) {
@@ -239,10 +255,10 @@ export async function updateSettingsCli(controller: Controller, request: UpdateS
 					}
 
 					// Show warning if there are busy terminals that couldn't be closed
-					if (busyTerminals.length > 0) {
+					if (busyTerminalsCount > 0) {
 						const message =
-							`${busyTerminals.length} busy ${busyTerminals.length === 1 ? "terminal has" : "terminals have"} a different profile. ` +
-							`Close ${busyTerminals.length === 1 ? "it" : "them"} to use the new profile for all commands.`
+							`${busyTerminalsCount} busy ${busyTerminalsCount === 1 ? "terminal has" : "terminals have"} a different profile. ` +
+							`Close ${busyTerminalsCount === 1 ? "it" : "them"} to use the new profile for all commands.`
 						HostProvider.window.showMessage({
 							type: ShowMessageType.WARNING,
 							message,
@@ -266,7 +282,6 @@ export async function updateSettingsCli(controller: Controller, request: UpdateS
 
 		return Empty.create()
 	} catch (error) {
-		console.error("Failed to update settings:", error)
 		throw error
 	}
 }

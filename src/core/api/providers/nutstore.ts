@@ -1,16 +1,20 @@
 import { setTimeout as setTimeoutPromise } from "node:timers/promises"
-import { Anthropic } from "@anthropic-ai/sdk"
-import { ModelInfo, nutstoreDefaultModelId, nutstoreDefaultModelInfo } from "@shared/api"
+import { StateManager } from "@core/storage/StateManager"
+import { type ModelInfo, nutstoreDefaultModelId, nutstoreDefaultModelInfo } from "@shared/api"
 import { shouldSkipReasoningForModel } from "@utils/model-utils"
 import axios from "axios"
-import OpenAI from "openai"
+import type OpenAI from "openai"
 import type { ChatCompletionTool as OpenAITool } from "openai/resources/chat/completions"
+import type { ClineStorageMessage } from "@/shared/messages/content"
+import { createOpenAIClient, getAxiosSettings } from "@/shared/net"
+import { Logger } from "@/shared/services/Logger"
 import { getUriScheme } from "@/utils/env"
-import { ApiHandler, CommonApiHandlerOptions } from "../"
+import type { ApiHandler, CommonApiHandlerOptions } from "../"
 import { withRetry } from "../retry"
 import { createOpenRouterStream } from "../transform/openrouter-stream"
-import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
-import { OpenRouterErrorResponse } from "./types"
+import type { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
+import { ToolCallProcessor } from "../transform/tool-call-processor"
+import type { OpenRouterErrorResponse } from "./types"
 
 interface NutstoreHandlerOptions extends CommonApiHandlerOptions {
 	nutstoreAccessToken?: string
@@ -19,13 +23,14 @@ interface NutstoreHandlerOptions extends CommonApiHandlerOptions {
 	nutstoreProviderSorting?: string
 	reasoningEffort?: string
 	thinkingBudgetTokens?: number
+	geminiThinkingLevel?: string
 }
 
 export class NutstoreHandler implements ApiHandler {
 	private options: NutstoreHandlerOptions
 	private client: OpenAI | undefined
 	lastGenerationId?: string
-	private host: string = "https://ai-assistant.jianguoyun.net.cn"
+	private host = "https://ai-assistant.jianguoyun.net.cn"
 	// private host: string = "http://localhost.eo2suite.cn:9000"
 
 	constructor(options: NutstoreHandlerOptions) {
@@ -35,10 +40,10 @@ export class NutstoreHandler implements ApiHandler {
 	private async ensureClient(): Promise<OpenAI> {
 		if (!this.client) {
 			if (!this.options.nutstoreAccessToken) {
-				throw new Error("OpenRouter API key is required")
+				throw new Error("Nutstore API key is required")
 			}
 			try {
-				this.client = new OpenAI({
+				this.client = createOpenAIClient({
 					baseURL: `${this.host}/cline-${await getUriScheme()}/llm-router`,
 					apiKey: "", // put AccessToken in header for verification
 					defaultHeaders: {
@@ -48,7 +53,7 @@ export class NutstoreHandler implements ApiHandler {
 					},
 				})
 			} catch (error: any) {
-				throw new Error(`Error creating OpenRouter client: ${error.message}`)
+				throw new Error(`Error creating Nutstore client: ${error.message}`)
 			}
 		}
 		return this.client
@@ -57,8 +62,9 @@ export class NutstoreHandler implements ApiHandler {
 	@withRetry()
 	async *createMessage(
 		systemPrompt: string,
-		messages: Anthropic.Messages.MessageParam[],
+		messages: ClineStorageMessage[],
 		tools?: OpenAITool[],
+		useResponseApi?: boolean,
 		taskId?: string,
 	): ApiStream {
 		const client = await this.ensureClient()
@@ -73,17 +79,19 @@ export class NutstoreHandler implements ApiHandler {
 			this.options.thinkingBudgetTokens,
 			this.options.nutstoreProviderSorting,
 			tools,
+			this.options.geminiThinkingLevel,
 			taskId,
 		)
 
-		let didOutputUsage: boolean = false
+		let didOutputUsage = false
+		const toolCallProcessor = new ToolCallProcessor()
 
 		for await (const chunk of stream) {
 			// openrouter returns an error object instead of the openai sdk throwing an error
 			// Check for error field directly on chunk
 			if ("error" in chunk) {
 				const error = chunk.error as OpenRouterErrorResponse["error"]
-				console.error(`Nutstore API Error: ${error?.code} - ${error?.message}`)
+				Logger.error(`Nutstore API Error: ${error?.code} - ${error?.message}`)
 				// Include metadata in the error message if available
 				const metadataStr = error.metadata ? `\nMetadata: ${JSON.stringify(error.metadata, null, 2)}` : ""
 				throw new Error(`Nutstore API Error ${error.code}: ${error.message}${metadataStr}`)
@@ -98,23 +106,20 @@ export class NutstoreHandler implements ApiHandler {
 				const choiceWithError = choice as any
 				if (choiceWithError.error) {
 					const error = choiceWithError.error
-					console.error(`Nutstore Mid-Stream Error: ${error?.code || "Unknown"} - ${error?.message || "Unknown error"}`)
+					Logger.error(`Nutstore Mid-Stream Error: ${error?.code || "Unknown"} - ${error?.message || "Unknown error"}`)
 					// Format error details
 					const errorDetails = typeof error === "object" ? JSON.stringify(error, null, 2) : String(error)
 					throw new Error(`Nutstore Mid-Stream Error: ${errorDetails}`)
-				} else {
-					// Fallback if error details are not available
-					throw new Error(
-						`Nutstore Mid-Stream Error: Stream terminated with error status but no error details provided`,
-					)
 				}
+				// Fallback if error details are not available
+				throw new Error(`Nutstore Mid-Stream Error: Stream terminated with error status but no error details provided`)
 			}
 
 			if (!this.lastGenerationId && chunk.id) {
 				this.lastGenerationId = chunk.id
 			}
 
-			const delta = chunk.choices[0]?.delta
+			const delta = chunk.choices?.[0]?.delta
 			if (delta?.content) {
 				yield {
 					type: "text",
@@ -122,13 +127,32 @@ export class NutstoreHandler implements ApiHandler {
 				}
 			}
 
+			if (delta?.tool_calls) {
+				yield* toolCallProcessor.processToolCallDeltas(delta.tool_calls)
+			}
+
 			// Reasoning tokens are returned separately from the content
 			// Skip reasoning content for Grok 4 models since it only displays "thinking" without providing useful information
 			if ("reasoning" in delta && delta.reasoning && !shouldSkipReasoningForModel(this.options.nutstoreModelId)) {
 				yield {
 					type: "reasoning",
-					// @ts-ignore-next-line
-					reasoning: delta.reasoning,
+					reasoning: typeof delta.reasoning === "string" ? delta.reasoning : JSON.stringify(delta.reasoning),
+				}
+			}
+
+			// OpenRouter passes reasoning details that we can pass back unmodified in api requests to preserve reasoning traces for model
+			// See: https://openrouter.ai/docs/use-cases/reasoning-tokens#preserving-reasoning-blocks
+			if (
+				"reasoning_details" in delta &&
+				delta.reasoning_details &&
+				// @ts-expect-error-next-line
+				delta.reasoning_details.length && // exists and non-0
+				!shouldSkipReasoningForModel(this.options.nutstoreModelId)
+			) {
+				yield {
+					type: "reasoning",
+					reasoning: "",
+					details: delta.reasoning_details,
 				}
 			}
 
@@ -139,7 +163,7 @@ export class NutstoreHandler implements ApiHandler {
 					cacheReadTokens: chunk.usage.prompt_tokens_details?.cached_tokens || 0,
 					inputTokens: (chunk.usage.prompt_tokens || 0) - (chunk.usage.prompt_tokens_details?.cached_tokens || 0),
 					outputTokens: chunk.usage.completion_tokens || 0,
-					// @ts-ignore-next-line
+					// @ts-expect-error-next-line
 					totalCost: (chunk.usage.cost || 0) + (chunk.usage.cost_details?.upstream_inference_cost || 0),
 				}
 				didOutputUsage = true
@@ -161,7 +185,7 @@ export class NutstoreHandler implements ApiHandler {
 			try {
 				const generationIterator = this.fetchGenerationDetails(this.lastGenerationId)
 				const generation = (await generationIterator.next()).value
-				// console.log("OpenRouter generation details:", generation)
+				// Logger.log("Nutstore generation details:", generation)
 				return {
 					type: "usage",
 					cacheWriteTokens: 0,
@@ -173,7 +197,7 @@ export class NutstoreHandler implements ApiHandler {
 				}
 			} catch (error) {
 				// ignore if fails
-				console.error("Error fetching OpenRouter generation details:", error)
+				Logger.error("Error fetching Nutstore generation details:", error)
 			}
 		}
 		return undefined
@@ -181,28 +205,29 @@ export class NutstoreHandler implements ApiHandler {
 
 	@withRetry({ maxRetries: 4, baseDelay: 250, maxDelay: 1000, retryAllErrors: true })
 	async *fetchGenerationDetails(genId: string) {
-		// console.log("Fetching generation details for:", genId)
+		// Logger.log("Fetching generation details for:", genId)
 		try {
 			const response = await axios.get(`${this.host}/cline/generation?id=${genId}`, {
 				headers: {
 					token: this.options.nutstoreAccessToken,
 				},
 				timeout: 15_000, // this request hangs sometimes
+				...getAxiosSettings(),
 			})
 			yield response.data?.data
 		} catch (error) {
 			// ignore if fails
-			console.error("Error fetching Nutstore generation details:", error)
+			Logger.error("Error fetching Nutstore generation details:", error)
 			throw error
 		}
 	}
 
 	getModel(): { id: string; info: ModelInfo } {
-		const modelId = this.options.nutstoreModelId
-		const modelInfo = this.options.nutstoreModelInfo
-		if (modelId && modelInfo) {
-			return { id: modelId, info: modelInfo }
+		const modelId = this.options.nutstoreModelId || nutstoreDefaultModelId
+		const cachedModelInfo = StateManager.get().getModelInfo("nutstore", modelId)
+		return {
+			id: modelId,
+			info: cachedModelInfo || nutstoreDefaultModelInfo,
 		}
-		return { id: nutstoreDefaultModelId, info: nutstoreDefaultModelInfo }
 	}
 }

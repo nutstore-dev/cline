@@ -2,10 +2,10 @@
  * Test to verify the new matcher-based variant selection works correctly
  */
 
-import { ApiProviderInfo } from "@/core/api"
-import { McpHub } from "@/services/mcp/McpHub"
+import type { ApiProviderInfo } from "@/core/api"
+import type { McpHub } from "@/services/mcp/McpHub"
 import { ModelFamily } from "@/shared/prompts"
-import { SystemPromptContext } from "../types"
+import type { SystemPromptContext } from "../types"
 import { VARIANT_CONFIGS } from "../variants"
 
 // Mock provider info objects for testing
@@ -15,6 +15,7 @@ const mockProviderInfos: { name: string; providerInfo: ApiProviderInfo; expected
 		providerInfo: {
 			providerId: "openai",
 			model: { id: "gpt-5", info: {} as any },
+			mode: "act" as const,
 		},
 		expectedFamily: ModelFamily.GPT_5,
 	},
@@ -23,6 +24,7 @@ const mockProviderInfos: { name: string; providerInfo: ApiProviderInfo; expected
 		providerInfo: {
 			providerId: "anthropic",
 			model: { id: "claude-3.5-sonnet-20241022", info: {} as any },
+			mode: "act" as const,
 		},
 		expectedFamily: ModelFamily.NEXT_GEN,
 	},
@@ -31,6 +33,7 @@ const mockProviderInfos: { name: string; providerInfo: ApiProviderInfo; expected
 		providerInfo: {
 			providerId: "ollama",
 			model: { id: "llama-3.2-1b", info: {} as any },
+			mode: "act" as const,
 			customPrompt: "compact",
 		},
 		expectedFamily: ModelFamily.XS,
@@ -40,6 +43,7 @@ const mockProviderInfos: { name: string; providerInfo: ApiProviderInfo; expected
 		providerInfo: {
 			providerId: "openai",
 			model: { id: "gpt-3.5-turbo", info: {} as any },
+			mode: "act" as const,
 		},
 		expectedFamily: ModelFamily.GENERIC,
 	},

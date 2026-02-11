@@ -1,5 +1,6 @@
-import { ClineDefaultTool, toolUseNames } from "@shared/tools"
-import { AssistantMessageContent, TextContent, ToolParamName, ToolUse, toolParamNames } from "." // Assuming types are defined in index.ts or a similar file
+import { type ClineDefaultTool, toolUseNames } from "@shared/tools"
+import { nanoid } from "nanoid"
+import { type AssistantMessageContent, type TextStreamContent, type ToolParamName, type ToolUse, toolParamNames } from "." // Assuming types are defined in index.ts or a similar file
 
 // parseAssistantmessageV1 removed in https://github.com/cline/cline/pull/5425
 
@@ -27,7 +28,7 @@ import { AssistantMessageContent, TextContent, ToolParamName, ToolUse, toolParam
 export function parseAssistantMessageV2(assistantMessage: string): AssistantMessageContent[] {
 	const contentBlocks: AssistantMessageContent[] = []
 	let currentTextContentStart = 0 // Index where the current text block started
-	let currentTextContent: TextContent | undefined
+	let currentTextContent: TextStreamContent | undefined
 	let currentToolUseStart = 0 // Index *after* the opening tag of the current tool use
 	let currentToolUse: ToolUse | undefined
 	let currentParamValueStart = 0 // Index *after* the opening tag of the current param
@@ -175,6 +176,8 @@ export function parseAssistantMessageV2(assistantMessage: string): AssistantMess
 						name: toolName,
 						params: {},
 						partial: true, // Assume partial until closing tag is found
+						call_id: nanoid(8),
+						isNativeToolCall: false,
 					}
 					currentToolUseStart = currentCharIndex + 1 // Tool content starts after the opening tag
 					startedNewTool = true

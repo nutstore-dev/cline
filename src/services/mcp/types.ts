@@ -1,10 +1,11 @@
-import { Client } from "@modelcontextprotocol/sdk/client/index.js"
-import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js"
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js"
-import { McpServer } from "@shared/mcp"
-import { z } from "zod"
-import { ServerConfigSchema } from "./schemas"
+import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js"
+import type { Client } from "@modelcontextprotocol/sdk/client/index.js"
+import type { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js"
+import type { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
+import type { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js"
+import type { McpServer } from "@shared/mcp"
+import type { z } from "zod"
+import type { ServerConfigSchema } from "./schemas"
 
 export type Transport = StdioClientTransport | SSEClientTransport | StreamableHTTPClientTransport
 
@@ -12,6 +13,7 @@ export type McpConnection = {
 	server: McpServer
 	client: Client
 	transport: Transport
+	authProvider?: OAuthClientProvider
 }
 
 export type McpTransportType = "stdio" | "sse" | "http"

@@ -23,14 +23,16 @@ service ModelsService {
   rpc refreshHuggingFaceModels(EmptyRequest) returns (OpenRouterCompatibleModelInfo);
   // Refreshes and returns OpenAI models
   rpc refreshOpenAiModels(OpenAiModelsRequest) returns (StringArray);
-  // Refreshes and returns Vercel AI Gateway models
-  rpc refreshVercelAiGatewayModelsRpc(EmptyRequest) returns (OpenRouterCompatibleModelInfo);
   // Refreshes and returns Requesty models
   rpc refreshRequestyModels(EmptyRequest) returns (OpenRouterCompatibleModelInfo);
   // Refreshes and returns Hicap models
   rpc refreshHicapModels(EmptyRequest) returns (OpenRouterCompatibleModelInfo);
+  // Refreshes and returns LiteLLM models
+  rpc refreshLiteLlmModelsRpc(EmptyRequest) returns (OpenRouterCompatibleModelInfo);
   // Subscribe to OpenRouter models updates
   rpc subscribeToOpenRouterModels(EmptyRequest) returns (stream OpenRouterCompatibleModelInfo);
+  // Subscribe to LiteLLM models updates
+  rpc subscribeToLiteLlmModels(EmptyRequest) returns (stream OpenRouterCompatibleModelInfo);
   // Updates API configuration (legacy - uses combined configuration)
   rpc updateApiConfigurationProto(UpdateApiConfigurationRequest) returns (Empty);
   // Updates API configuration (new - uses separate options and secrets)
@@ -45,6 +47,10 @@ service ModelsService {
   rpc getSapAiCoreModels(SapAiCoreModelsRequest) returns (SapAiCoreModelsResponse);
   // Fetches available models from OCA
   rpc refreshOcaModels(StringRequest) returns (OcaCompatibleModelInfo);
+  // Fetches available models from AIhubmix
+  rpc getAihubmixModels(EmptyRequest) returns (OpenRouterCompatibleModelInfo);
+  // Refreshes and returns Vercel AI Gateway models
+  rpc refreshVercelAiGatewayModelsRpc(EmptyRequest) returns (OpenRouterCompatibleModelInfo);
 }
 
 // List of VS Code LM models
@@ -96,6 +102,10 @@ message OpenRouterModelInfo {
   optional ThinkingConfig thinking_config = 10;
   optional bool supports_global_endpoint = 11;
   repeated ModelTier tiers = 12;
+  optional string name = 13;
+  optional double temperature = 14;
+  optional bool supports_reasoning = 15;
+  optional ApiFormat api_format = 16;
 }
 
 // Shared response message for model information
@@ -172,6 +182,7 @@ message ModelsApiSecrets {
   optional string oca_api_key = 36;
   optional string oca_refresh_token = 37;
   optional string minimax_api_key = 38;
+  optional string aihubmix_api_key = 39;
 }
 
 // API configuration options (non-secret settings)
@@ -218,6 +229,9 @@ message ModelsApiOptions {
   optional string oca_mode = 39;
   optional bool aws_use_global_inference = 40;
   optional string minimax_api_line = 41;
+  optional string aihubmix_base_url = 42;
+  optional string aihubmix_app_code = 43;
+  optional bool azure_identity = 44;
 
   // Plan mode configurations
   optional ApiProvider plan_mode_api_provider = 100;
@@ -253,6 +267,8 @@ message ModelsApiOptions {
   optional OpenRouterModelInfo plan_mode_vercel_ai_gateway_model_info = 130;
   optional string plan_mode_oca_model_id = 131;
   optional OcaModelInfo plan_mode_oca_model_info = 132;
+  optional string plan_mode_aihubmix_model_id = 133;
+  optional OpenAiCompatibleModelInfo plan_mode_aihubmix_model_info = 134;
 
   // Act mode configurations
   optional ApiProvider act_mode_api_provider = 200;
@@ -288,6 +304,8 @@ message ModelsApiOptions {
   optional OpenRouterModelInfo act_mode_vercel_ai_gateway_model_info = 230;
   optional string act_mode_oca_model_id = 231;
   optional OcaModelInfo act_mode_oca_model_info = 232;
+  optional string act_mode_aihubmix_model_id = 233;
+  optional OpenAiCompatibleModelInfo act_mode_aihubmix_model_info = 234;
 }
 
 // Request for updating API configuration (legacy - uses combined configuration)
@@ -305,7 +323,7 @@ message ApiConfiguration {
 // Request for updating API configuration (new - uses separate options and secrets)
 message UpdateApiConfigurationRequestNew {
   Metadata metadata = 1;
-  ApiConfiguration api_configuration = 2;
+  ApiConfiguration updates = 2;
 
   // Required field mask specifying which fields to update.
   // Field paths use dot notation with camelCase field names:
@@ -313,7 +331,7 @@ message UpdateApiConfigurationRequestNew {
   // - "options.openAiHeaders" (for options fields)
   // - "secrets.apiKey" (for secrets fields)
   // - "secrets.openRouterApiKey" (for secrets fields)
-  google.protobuf.FieldMask update_mask = 3;
+  repeated string update_mask = 3;
 }
 
 // Request for partially updating API configuration using FieldMask
@@ -363,6 +381,12 @@ message OcaModelInfo {
   optional string banner = 16;
   // Canonical model identifier as reported by OCA
   string model_name = 17;
+  // The API format used by this model
+  optional ApiFormat api_format = 18;
+  // Supports reasoning
+  optional bool supports_reasoning = 19;
+  // reasoning effort options
+  repeated string reasoning_effort_options = 20;
 }
 
 // Aggregated OCA model catalog keyed by model identifier
@@ -413,7 +437,18 @@ enum ApiProvider {
   OCA = 35;
   MINIMAX = 36;
   HICAP = 37;
-  NUTSTORE = 38;
+  AIHUBMIX = 38;
+  NOUSRESEARCH = 39;
+  OPENAI_CODEX = 40;
+  NUTSTORE = 41;
+}
+
+enum ApiFormat {
+  ANTHROPIC_CHAT = 0;
+  GEMINI_CHAT = 1;
+  OPENAI_CHAT = 2;
+  R1_CHAT = 3;
+  OPENAI_RESPONSES = 4;
 }
 
 // Model info for OpenAI-compatible models
@@ -432,6 +467,7 @@ message OpenAiCompatibleModelInfo {
   repeated ModelTier tiers = 12;
   optional double temperature = 13;
   optional bool is_r1_format_required = 14;
+  optional ApiFormat api_format = 15;
 }
 
 // Model info for LiteLLM models
@@ -449,6 +485,8 @@ message LiteLLMModelInfo {
   optional string description = 11;
   repeated ModelTier tiers = 12;
   optional double temperature = 13;
+  optional ApiFormat api_format = 14;
+  optional bool supports_reasoning = 15;
 }
 
 // Main ApiConfiguration message
@@ -535,8 +573,13 @@ message ModelsApiConfiguration {
   optional string minimax_api_line = 79;
   optional string hicap_model_id = 80;
   optional string hicap_api_key = 81;
-  optional string nutstore_access_token = 82;
-  optional string nutstore_provider_sorting = 83;
+  optional string aihubmix_api_key = 82;
+  optional string aihubmix_base_url = 83;
+  optional string aihubmix_app_code = 84;
+  optional string nous_research_api_key = 85;
+  optional bool azure_identity = 86;
+  optional string nutstore_access_token = 87;
+  optional string nutstore_provider_sorting = 88;
 
   // Plan mode configurations
   optional ApiProvider plan_mode_api_provider = 100;
@@ -572,10 +615,15 @@ message ModelsApiConfiguration {
   optional OpenRouterModelInfo plan_mode_vercel_ai_gateway_model_info = 130;
   optional string plan_mode_oca_model_id = 131;
   optional OcaModelInfo plan_mode_oca_model_info = 132;
-  optional string plan_mode_hicap_model_id = 133;
-  optional OpenRouterModelInfo plan_mode_hicap_model_info = 134;
-  optional string plan_mode_nutstore_model_id = 135;
-  optional OpenRouterModelInfo plan_mode_nutstore_model_info = 136;
+  optional string plan_mode_oca_reasoning_effort = 133;
+  optional string plan_mode_hicap_model_id = 134;
+  optional OpenRouterModelInfo plan_mode_hicap_model_info = 135;
+  optional string plan_mode_aihubmix_model_id = 136;
+  optional OpenAiCompatibleModelInfo plan_mode_aihubmix_model_info = 137;
+  optional string plan_mode_nous_research_model_id = 138;
+  optional string gemini_plan_mode_thinking_level = 139;
+  optional string plan_mode_nutstore_model_id = 140;
+  optional OpenRouterModelInfo plan_mode_nutstore_model_info = 141;
 
   // Act mode configurations
   optional ApiProvider act_mode_api_provider = 200;
@@ -611,8 +659,13 @@ message ModelsApiConfiguration {
   optional OpenRouterModelInfo act_mode_vercel_ai_gateway_model_info = 230;
   optional string act_mode_oca_model_id = 231;
   optional OcaModelInfo act_mode_oca_model_info = 232;
-  optional string act_mode_hicap_model_id = 233;
-  optional OpenRouterModelInfo act_mode_hicap_model_info = 234;
-  optional string act_mode_nutstore_model_id = 235;
-  optional OpenRouterModelInfo act_mode_nutstore_model_info = 236;
+  optional string act_mode_oca_reasoning_effort = 233;
+  optional string act_mode_hicap_model_id = 234;
+  optional OpenRouterModelInfo act_mode_hicap_model_info = 235;
+  optional string act_mode_aihubmix_model_id = 236;
+  optional OpenAiCompatibleModelInfo act_mode_aihubmix_model_info = 237;
+  optional string act_mode_nous_research_model_id = 238;
+  optional string gemini_act_mode_thinking_level = 239;
+  optional string act_mode_nutstore_model_id = 240;
+  optional OpenRouterModelInfo act_mode_nutstore_model_info = 241;
 }

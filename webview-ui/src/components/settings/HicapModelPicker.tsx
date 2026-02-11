@@ -1,8 +1,9 @@
 import { StringRequest } from "@shared/proto/cline/common"
-import { Mode } from "@shared/storage/types"
+import type { Mode } from "@shared/storage/types"
 import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import Fuse from "fuse.js"
-import React, { KeyboardEvent, useEffect, useMemo, useRef, useState } from "react"
+import type React from "react"
+import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react"
 import { useMount } from "react-use"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { StateServiceClient } from "@/services/grpc-client"
@@ -33,7 +34,7 @@ const HicapModelPicker: React.FC<HicapModelPickerProps> = ({ isPopup, currentMod
 	const { apiConfiguration, favoritedModelIds, hicapModels, refreshHicapModels } = useExtensionState()
 
 	const modeFields = getModeSpecificFields(apiConfiguration, currentMode)
-	const [searchTerm, setSearchTerm] = useState(modeFields.hicapModelId || "gpt-5")
+	const [searchTerm, setSearchTerm] = useState(modeFields.hicapModelId || "")
 	const [isDropdownVisible, setIsDropdownVisible] = useState(false)
 	const [selectedIndex, setSelectedIndex] = useState(-1)
 	const dropdownRef = useRef<HTMLDivElement>(null)
@@ -60,7 +61,7 @@ const HicapModelPicker: React.FC<HicapModelPickerProps> = ({ isPopup, currentMod
 
 	// Sync external changes when the modelId changes
 	useEffect(() => {
-		const currentModelId = modeFields.hicapModelId || "gpt-5"
+		const currentModelId = modeFields.hicapModelId || ""
 		setSearchTerm(currentModelId)
 	}, [modeFields.hicapModelId])
 
@@ -170,7 +171,7 @@ const HicapModelPicker: React.FC<HicapModelPickerProps> = ({ isPopup, currentMod
 
 				<div className="relative w-full" ref={dropdownRef}>
 					<VSCodeTextField
-						className={`w-full z-[${HICAP_MODEL_PICKER_Z_INDEX}] relative`}
+						className="w-full relative"
 						disabled={apiConfiguration?.hicapApiKey?.length !== 32 || Object.keys(hicapModels).length === 0}
 						id="model-search"
 						onFocus={() => setIsDropdownVisible(true)}
@@ -180,6 +181,7 @@ const HicapModelPicker: React.FC<HicapModelPickerProps> = ({ isPopup, currentMod
 						}}
 						onKeyDown={handleKeyDown}
 						placeholder="Search and select a model..."
+						style={{ zIndex: HICAP_MODEL_PICKER_Z_INDEX }}
 						value={searchTerm}>
 						{searchTerm && (
 							<div
@@ -195,11 +197,12 @@ const HicapModelPicker: React.FC<HicapModelPickerProps> = ({ isPopup, currentMod
 					</VSCodeTextField>
 					{isDropdownVisible && (
 						<div
-							className={`absolute top-[calc(100%-3px)] left-0 w-[calc(100%-2px)]
+							className="absolute top-[calc(100%-3px)] left-0 w-[calc(100%-2px)]
 							max-h-[200px] overflow-y-auto bg-[var(--vscode-dropdown-background)]
 							border border-[var(--vscode-list-activeSelectionBackground)]
-							z-[${HICAP_MODEL_PICKER_Z_INDEX - 1}] rounded-b-[3px]`}
-							ref={dropdownListRef}>
+							rounded-b-[3px]"
+							ref={dropdownListRef}
+							style={{ zIndex: HICAP_MODEL_PICKER_Z_INDEX - 1 }}>
 							{modelSearchResults.map((item, index) => {
 								const isFavorite = (favoritedModelIds || []).includes(item.id)
 								return (

@@ -17,6 +17,7 @@ export const TASK_CONFIG_KEYS = [
 	"strictPlanModeEnabled",
 	"yoloModeToggled",
 	"vscodeTerminalExecutionMode",
+	"enableParallelToolCalling",
 	"context",
 	"taskState",
 	"messageState",
@@ -41,6 +42,7 @@ export const TASK_SERVICES_KEYS = [
 	"diffViewProvider",
 	"fileContextTracker",
 	"clineIgnoreController",
+	"commandPermissionController",
 	"contextManager",
 	"stateManager",
 ] as const
@@ -64,6 +66,10 @@ export const TASK_CALLBACKS_KEYS = [
 	"cancelTask",
 	"updateTaskHistory",
 	"switchToActMode",
+	"setActiveHookExecution",
+	"clearActiveHookExecution",
+	"getActiveHookExecution",
+	"runUserPromptSubmitHook",
 ] as const
 
 /**
@@ -120,7 +126,7 @@ export function removeClosingTag(block: ToolUse, tag: ToolParamName, text?: stri
 	}
 
 	const tagRegex = new RegExp(
-		`\\s?<\/?${tag
+		`\\s?</?${tag
 			.split("")
 			.map((char) => `(?:${char})?`)
 			.join("")}$`,

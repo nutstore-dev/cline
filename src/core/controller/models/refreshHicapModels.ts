@@ -1,11 +1,12 @@
 import { GlobalFileNames } from "@core/storage/disk"
-import { EmptyRequest } from "@shared/proto/cline/common"
-import { OpenRouterCompatibleModelInfo, OpenRouterModelInfo } from "@shared/proto/cline/models"
+import type { EmptyRequest } from "@shared/proto/cline/common"
+import { OpenRouterCompatibleModelInfo, type OpenRouterModelInfo } from "@shared/proto/cline/models"
 import { fileExistsAtPath } from "@utils/fs"
 import axios from "axios"
 import fs from "fs/promises"
 import path from "path"
-import { Controller } from ".."
+import { getAxiosSettings } from "@/shared/net"
+import type { Controller } from ".."
 
 /**
  * The raw model information returned by the Hicap API to list models
@@ -33,6 +34,7 @@ export async function refreshHicapModels(controller: Controller, _request: Empty
 			headers: {
 				"api-key": hicapApiKey,
 			},
+			...getAxiosSettings(),
 		})
 
 		if (response.data?.data) {

@@ -1,4 +1,4 @@
-import { McpTool } from "@shared/mcp"
+import type { McpTool } from "@shared/mcp"
 import { ToggleToolAutoApproveRequest } from "@shared/proto/cline/mcp"
 import { convertProtoMcpServersToMcpServers } from "@shared/proto-conversions/mcp/mcp-server-conversion"
 import { VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
@@ -45,13 +45,17 @@ const McpToolRow = ({ tool, serverName }: McpToolRowProps) => {
 			<div
 				data-testid="tool-row-container"
 				onClick={(e) => e.stopPropagation()}
-				style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-				<div style={{ display: "flex", alignItems: "center" }}>
-					<span className="codicon codicon-symbol-method" style={{ marginRight: "6px" }}></span>
-					<span style={{ fontWeight: 500 }}>{tool.name}</span>
+				style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "4px" }}>
+				<div style={{ display: "flex", alignItems: "center", minWidth: 0, flex: "1 1 auto" }}>
+					<span className="codicon codicon-symbol-method" style={{ marginRight: "6px", flexShrink: 0 }} />
+					<span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis" }}>{tool.name}</span>
 				</div>
 				{serverName && autoApprovalSettings.actions.useMcp && (
-					<VSCodeCheckbox checked={tool.autoApprove ?? false} data-tool={tool.name} onChange={handleAutoApproveChange}>
+					<VSCodeCheckbox
+						checked={tool.autoApprove ?? false}
+						data-tool={tool.name}
+						onChange={handleAutoApproveChange}
+						style={{ fontSize: "11px" }}>
 						Auto-approve
 					</VSCodeCheckbox>
 				)}

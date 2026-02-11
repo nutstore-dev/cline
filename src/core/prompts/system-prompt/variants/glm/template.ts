@@ -4,6 +4,7 @@ export const baseTemplate = `{{${SystemPromptSection.AGENT_ROLE}}}
 
 {{${SystemPromptSection.TOOL_USE}}}
 
+## {{${SystemPromptSection.TASK_PROGRESS}}}
 
 ## {{${SystemPromptSection.RULES}}}
 
@@ -13,13 +14,13 @@ export const baseTemplate = `{{${SystemPromptSection.AGENT_ROLE}}}
 
 ## {{${SystemPromptSection.CAPABILITIES}}}
 
+## {{${SystemPromptSection.SKILLS}}}
+
 ## {{${SystemPromptSection.EDITING_FILES}}}
 
 ## {{${SystemPromptSection.TODO}}}
 
 ## {{${SystemPromptSection.MCP}}}
-
-## {{${SystemPromptSection.TASK_PROGRESS}}}
 
 ## {{${SystemPromptSection.SYSTEM_INFO}}}
 

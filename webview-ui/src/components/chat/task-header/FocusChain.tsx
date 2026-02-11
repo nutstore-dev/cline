@@ -2,7 +2,8 @@ import { cn } from "@heroui/react"
 import { isCompletedFocusChainItem, isFocusChainItem } from "@shared/focus-chain-utils"
 import { StringRequest } from "@shared/proto/cline/common"
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react"
-import React, { memo, useCallback, useMemo, useState } from "react"
+import type React from "react"
+import { memo, useCallback, useMemo, useState } from "react"
 import ChecklistRenderer from "@/components/common/ChecklistRenderer"
 import LightMarkdown from "@/components/common/LightMarkdown"
 import { FileServiceClient } from "@/services/grpc-client"
@@ -54,7 +55,7 @@ const ToDoListHeader = memo<{
 					width: `${progressPercentage}%`,
 				}}
 			/>
-			<div className="flex items-center justify-between gap-2 z-10 py-2.5 px-1.5">
+			<div className="flex items-center justify-between gap-2 z-10 py-2 px-2.5">
 				<div className="flex items-center gap-1.5 flex-1 min-w-0 text-sm">
 					<span
 						className={cn(
@@ -189,8 +190,17 @@ export const FocusChain: React.FC<FocusChainProps> = memo(
 
 		return (
 			<div
+				aria-label={isExpanded ? "Collapse focus chain" : "Expand focus chain"}
 				className="relative rounded-sm bg-toolbar-hover/65 flex flex-col gap-1.5 select-none hover:bg-toolbar-hover overflow-hidden opacity-80 hover:opacity-100 transition-[transform,box-shadow] duration-200 cursor-pointer"
 				onClick={handleToggle}
+				onKeyDown={(e) => {
+					if (e.key === "Enter" || e.key === " ") {
+						e.preventDefault()
+						e.stopPropagation()
+						handleToggle()
+					}
+				}}
+				tabIndex={0}
 				title={CLICK_TO_EDIT_TITLE}>
 				<ToDoListHeader isExpanded={isExpanded} todoInfo={todoInfo} />
 				{isExpanded && (

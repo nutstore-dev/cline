@@ -1,3 +1,4 @@
+import { ExternalCommentReviewController } from "@hosts/external/ExternalCommentReviewController"
 import { ExternalDiffViewProvider } from "@hosts/external/ExternalDiffviewProvider"
 import { ExternalWebviewProvider } from "@hosts/external/ExternalWebviewProvider"
 import { ExternalHostBridgeClientManager } from "@hosts/external/host-bridge-client-manager"
@@ -5,10 +6,12 @@ import { retryOperation } from "@utils/retry"
 import * as path from "path"
 import { initialize, tearDown } from "@/common"
 import { SqliteLockManager } from "@/core/locks/SqliteLockManager"
-import { WebviewProvider } from "@/core/webview"
+import type { WebviewProvider } from "@/core/webview"
 import { AuthHandler } from "@/hosts/external/AuthHandler"
 import { HostProvider } from "@/hosts/host-provider"
-import { DiffViewProvider } from "@/integrations/editor/DiffViewProvider"
+import type { DiffViewProvider } from "@/integrations/editor/DiffViewProvider"
+import { StandaloneTerminalManager } from "@/integrations/terminal"
+import { Logger } from "@/shared/services/Logger"
 import { HOSTBRIDGE_PORT, waitForHostBridgeReady } from "./hostbridge-client"
 import { setLockManager } from "./lock-manager"
 import { PROTOBUS_PORT, startProtobusService } from "./protobus-service"
@@ -29,6 +32,9 @@ async function main() {
 		showHelp()
 		process.exit(0)
 	}
+
+	// Resource loading assumes cwd is the installation directory
+	process.chdir(__dirname)
 
 	// Initialize context with optional custom directory from CLI
 	const { extensionContext, DATA_DIR, EXTENSION_DIR } = initializeContext(args.config)
@@ -99,6 +105,8 @@ function setupHostProvider(extensionContext: any, extensionDir: string, dataDir:
 	const createDiffView = (): DiffViewProvider => {
 		return new ExternalDiffViewProvider()
 	}
+	const createCommentReview = () => new ExternalCommentReviewController()
+	const createTerminalManager = () => new StandaloneTerminalManager()
 	const getCallbackUrl = (): Promise<string> => {
 		return AuthHandler.getInstance().getCallbackUrl()
 	}
@@ -108,6 +116,8 @@ function setupHostProvider(extensionContext: any, extensionDir: string, dataDir:
 	HostProvider.initialize(
 		createWebview,
 		createDiffView,
+		createCommentReview,
+		createTerminalManager,
 		new ExternalHostBridgeClientManager(),
 		log,
 		getCallbackUrl,
@@ -242,10 +252,10 @@ function parseArgs(): CliArgs {
 		switch (arg) {
 			case "--port":
 			case "-p":
-				args.port = parseInt(argv[++i], 10)
+				args.port = Number.parseInt(argv[++i], 10)
 				break
 			case "--host-bridge-port":
-				args.hostBridgePort = parseInt(argv[++i], 10)
+				args.hostBridgePort = Number.parseInt(argv[++i], 10)
 				break
 			case "--config":
 			case "-c":
@@ -262,7 +272,7 @@ function parseArgs(): CliArgs {
 }
 
 function showHelp() {
-	console.log(`
+	Logger.log(`
 Cline Core - Standalone Server
 
 Usage: node cline-core.js [options]

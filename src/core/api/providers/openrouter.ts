@@ -1,16 +1,19 @@
 import { setTimeout as setTimeoutPromise } from "node:timers/promises"
-import { Anthropic } from "@anthropic-ai/sdk"
-import { ModelInfo, openRouterDefaultModelId, openRouterDefaultModelInfo } from "@shared/api"
+import { StateManager } from "@core/storage/StateManager"
+import { type ModelInfo, openRouterDefaultModelId, openRouterDefaultModelInfo } from "@shared/api"
 import { shouldSkipReasoningForModel } from "@utils/model-utils"
 import axios from "axios"
-import OpenAI from "openai"
+import type OpenAI from "openai"
 import type { ChatCompletionTool as OpenAITool } from "openai/resources/chat/completions"
-import { ApiHandler, CommonApiHandlerOptions } from "../"
+import type { ClineStorageMessage } from "@/shared/messages/content"
+import { createOpenAIClient, getAxiosSettings } from "@/shared/net"
+import { Logger } from "@/shared/services/Logger"
+import type { ApiHandler, CommonApiHandlerOptions } from "../"
 import { withRetry } from "../retry"
 import { createOpenRouterStream } from "../transform/openrouter-stream"
-import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
+import type { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
 import { ToolCallProcessor } from "../transform/tool-call-processor"
-import { OpenRouterErrorResponse } from "./types"
+import type { OpenRouterErrorResponse } from "./types"
 
 interface OpenRouterHandlerOptions extends CommonApiHandlerOptions {
 	openRouterApiKey?: string
@@ -19,6 +22,7 @@ interface OpenRouterHandlerOptions extends CommonApiHandlerOptions {
 	openRouterProviderSorting?: string
 	reasoningEffort?: string
 	thinkingBudgetTokens?: number
+	geminiThinkingLevel?: string
 }
 
 export class OpenRouterHandler implements ApiHandler {
@@ -36,7 +40,7 @@ export class OpenRouterHandler implements ApiHandler {
 				throw new Error("OpenRouter API key is required")
 			}
 			try {
-				this.client = new OpenAI({
+				this.client = createOpenAIClient({
 					baseURL: "https://openrouter.ai/api/v1",
 					apiKey: this.options.openRouterApiKey,
 					defaultHeaders: {
@@ -52,7 +56,7 @@ export class OpenRouterHandler implements ApiHandler {
 	}
 
 	@withRetry()
-	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[], tools?: OpenAITool[]): ApiStream {
+	async *createMessage(systemPrompt: string, messages: ClineStorageMessage[], tools?: OpenAITool[]): ApiStream {
 		const client = this.ensureClient()
 		this.lastGenerationId = undefined
 
@@ -65,9 +69,10 @@ export class OpenRouterHandler implements ApiHandler {
 			this.options.thinkingBudgetTokens,
 			this.options.openRouterProviderSorting,
 			tools,
+			this.options.geminiThinkingLevel,
 		)
 
-		let didOutputUsage: boolean = false
+		let didOutputUsage = false
 		const toolCallProcessor = new ToolCallProcessor()
 
 		for await (const chunk of stream) {
@@ -75,7 +80,7 @@ export class OpenRouterHandler implements ApiHandler {
 			// Check for error field directly on chunk
 			if ("error" in chunk) {
 				const error = chunk.error as OpenRouterErrorResponse["error"]
-				console.error(`OpenRouter API Error: ${error?.code} - ${error?.message}`)
+				Logger.error(`OpenRouter API Error: ${error?.code} - ${error?.message}`)
 				// Include metadata in the error message if available
 				const metadataStr = error.metadata ? `\nMetadata: ${JSON.stringify(error.metadata, null, 2)}` : ""
 				throw new Error(`OpenRouter API Error ${error.code}: ${error.message}${metadataStr}`)
@@ -90,25 +95,22 @@ export class OpenRouterHandler implements ApiHandler {
 				const choiceWithError = choice as any
 				if (choiceWithError.error) {
 					const error = choiceWithError.error
-					console.error(
+					Logger.error(
 						`OpenRouter Mid-Stream Error: ${error?.code || "Unknown"} - ${error?.message || "Unknown error"}`,
 					)
 					// Format error details
 					const errorDetails = typeof error === "object" ? JSON.stringify(error, null, 2) : String(error)
 					throw new Error(`OpenRouter Mid-Stream Error: ${errorDetails}`)
-				} else {
-					// Fallback if error details are not available
-					throw new Error(
-						`OpenRouter Mid-Stream Error: Stream terminated with error status but no error details provided`,
-					)
 				}
+				// Fallback if error details are not available
+				throw new Error(`OpenRouter Mid-Stream Error: Stream terminated with error status but no error details provided`)
 			}
 
 			if (!this.lastGenerationId && chunk.id) {
 				this.lastGenerationId = chunk.id
 			}
 
-			const delta = chunk.choices[0]?.delta
+			const delta = chunk.choices?.[0]?.delta
 			if (delta?.content) {
 				yield {
 					type: "text",
@@ -125,8 +127,7 @@ export class OpenRouterHandler implements ApiHandler {
 			if ("reasoning" in delta && delta.reasoning && !shouldSkipReasoningForModel(this.options.openRouterModelId)) {
 				yield {
 					type: "reasoning",
-					// @ts-ignore-next-line
-					reasoning: delta.reasoning,
+					reasoning: typeof delta.reasoning === "string" ? delta.reasoning : JSON.stringify(delta.reasoning),
 				}
 			}
 
@@ -135,13 +136,14 @@ export class OpenRouterHandler implements ApiHandler {
 			if (
 				"reasoning_details" in delta &&
 				delta.reasoning_details &&
-				// @ts-ignore-next-line
+				// @ts-expect-error-next-line
 				delta.reasoning_details.length && // exists and non-0
 				!shouldSkipReasoningForModel(this.options.openRouterModelId)
 			) {
 				yield {
-					type: "reasoning_details",
-					reasoning_details: delta.reasoning_details,
+					type: "reasoning",
+					reasoning: "",
+					details: delta.reasoning_details,
 				}
 			}
 
@@ -152,7 +154,7 @@ export class OpenRouterHandler implements ApiHandler {
 					cacheReadTokens: chunk.usage.prompt_tokens_details?.cached_tokens || 0,
 					inputTokens: (chunk.usage.prompt_tokens || 0) - (chunk.usage.prompt_tokens_details?.cached_tokens || 0),
 					outputTokens: chunk.usage.completion_tokens || 0,
-					// @ts-ignore-next-line
+					// @ts-expect-error-next-line
 					totalCost: (chunk.usage.cost || 0) + (chunk.usage.cost_details?.upstream_inference_cost || 0),
 				}
 				didOutputUsage = true
@@ -174,7 +176,7 @@ export class OpenRouterHandler implements ApiHandler {
 			try {
 				const generationIterator = this.fetchGenerationDetails(this.lastGenerationId)
 				const generation = (await generationIterator.next()).value
-				// console.log("OpenRouter generation details:", generation)
+				// Logger.log("OpenRouter generation details:", generation)
 				return {
 					type: "usage",
 					cacheWriteTokens: 0,
@@ -186,7 +188,7 @@ export class OpenRouterHandler implements ApiHandler {
 				}
 			} catch (error) {
 				// ignore if fails
-				console.error("Error fetching OpenRouter generation details:", error)
+				Logger.error("Error fetching OpenRouter generation details:", error)
 			}
 		}
 		return undefined
@@ -194,28 +196,29 @@ export class OpenRouterHandler implements ApiHandler {
 
 	@withRetry({ maxRetries: 4, baseDelay: 250, maxDelay: 1000, retryAllErrors: true })
 	async *fetchGenerationDetails(genId: string) {
-		// console.log("Fetching generation details for:", genId)
+		// Logger.log("Fetching generation details for:", genId)
 		try {
 			const response = await axios.get(`https://openrouter.ai/api/v1/generation?id=${genId}`, {
 				headers: {
 					Authorization: `Bearer ${this.options.openRouterApiKey}`,
 				},
 				timeout: 15_000, // this request hangs sometimes
+				...getAxiosSettings(),
 			})
 			yield response.data?.data
 		} catch (error) {
 			// ignore if fails
-			console.error("Error fetching OpenRouter generation details:", error)
+			Logger.error("Error fetching OpenRouter generation details:", error)
 			throw error
 		}
 	}
 
 	getModel(): { id: string; info: ModelInfo } {
-		const modelId = this.options.openRouterModelId
-		const modelInfo = this.options.openRouterModelInfo
-		if (modelId && modelInfo) {
-			return { id: modelId, info: modelInfo }
+		const modelId = this.options.openRouterModelId || openRouterDefaultModelId
+		const cachedModelInfo = StateManager.get().getModelInfo("openRouter", modelId)
+		return {
+			id: modelId,
+			info: cachedModelInfo || openRouterDefaultModelInfo,
 		}
-		return { id: openRouterDefaultModelId, info: openRouterDefaultModelInfo }
 	}
 }

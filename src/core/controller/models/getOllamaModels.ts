@@ -1,6 +1,7 @@
-import { StringArray, StringRequest } from "@shared/proto/cline/common"
+import { StringArray, type StringRequest } from "@shared/proto/cline/common"
 import axios from "axios"
-import { Controller } from ".."
+import { getAxiosSettings } from "@/shared/net"
+import type { Controller } from ".."
 
 /**
  * Fetches available models from Ollama
@@ -16,7 +17,7 @@ export async function getOllamaModels(_controller: Controller, request: StringRe
 			return StringArray.create({ values: [] })
 		}
 
-		const response = await axios.get(`${baseUrl}/api/tags`)
+		const response = await axios.get(`${baseUrl}/api/tags`, getAxiosSettings())
 		const modelsArray = response.data?.models?.map((model: any) => model.name) || []
 		const models = [...new Set<string>(modelsArray)].sort()
 

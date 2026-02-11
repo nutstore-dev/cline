@@ -1,11 +1,12 @@
-import { Anthropic } from "@anthropic-ai/sdk"
-import { HuaweiCloudMaasModelId, huaweiCloudMaasDefaultModelId, huaweiCloudMaasModels, ModelInfo } from "@shared/api"
-import OpenAI from "openai"
+import { type HuaweiCloudMaasModelId, huaweiCloudMaasDefaultModelId, huaweiCloudMaasModels, type ModelInfo } from "@shared/api"
+import type OpenAI from "openai"
 import type { ChatCompletionTool as OpenAITool } from "openai/resources/chat/completions"
-import { ApiHandler, CommonApiHandlerOptions } from ".."
+import type { ClineStorageMessage } from "@/shared/messages/content"
+import { createOpenAIClient } from "@/shared/net"
+import type { ApiHandler, CommonApiHandlerOptions } from ".."
 import { withRetry } from "../retry"
 import { convertToOpenAiMessages } from "../transform/openai-format"
-import { ApiStream } from "../transform/stream"
+import type { ApiStream } from "../transform/stream"
 import { getOpenAIToolParams, ToolCallProcessor } from "../transform/tool-call-processor"
 
 interface HuaweiCloudMaaSHandlerOptions extends CommonApiHandlerOptions {
@@ -27,7 +28,7 @@ export class HuaweiCloudMaaSHandler implements ApiHandler {
 				throw new Error("Huawei Cloud MaaS API key is required")
 			}
 			try {
-				this.client = new OpenAI({
+				this.client = createOpenAIClient({
 					baseURL: "https://api.modelarts-maas.com/v1/",
 					apiKey: this.options.huaweiCloudMaasApiKey,
 				})
@@ -60,7 +61,7 @@ export class HuaweiCloudMaaSHandler implements ApiHandler {
 	}
 
 	@withRetry()
-	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[], tools?: OpenAITool[]): ApiStream {
+	async *createMessage(systemPrompt: string, messages: ClineStorageMessage[], tools?: OpenAITool[]): ApiStream {
 		const client = this.ensureClient()
 		const model = this.getModel()
 		const openAiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
@@ -78,13 +79,13 @@ export class HuaweiCloudMaaSHandler implements ApiHandler {
 		})
 
 		let reasoning: string | null = null
-		let didOutputUsage: boolean = false
+		let didOutputUsage = false
 		let finalUsage: any = null
 
 		const toolCallProcessor = new ToolCallProcessor()
 
 		for await (const chunk of stream) {
-			const delta = chunk.choices[0]?.delta
+			const delta = chunk.choices?.[0]?.delta
 
 			// Handle reasoning content detection
 			if (delta?.content) {

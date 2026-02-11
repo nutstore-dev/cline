@@ -1,12 +1,12 @@
 import { processFilesIntoText } from "@integrations/misc/extract-text"
 import { showSystemNotification } from "@integrations/notifications"
 import { findLast, parsePartialArrayString } from "@shared/array"
-import { ClineAsk, ClineAskQuestion } from "@shared/ExtensionMessage"
+import type { ClineAsk, ClineAskQuestion } from "@shared/ExtensionMessage"
 import { ClineDefaultTool } from "@shared/tools"
 import { telemetryService } from "@/services/telemetry"
-import { ToolUse } from "../../../assistant-message"
+import type { ToolUse } from "../../../assistant-message"
 import { formatResponse } from "../../../prompts/responses"
-import { ToolResponse } from "../.."
+import type { ToolResponse } from "../.."
 import type { IPartialBlockHandler, IToolHandler } from "../ToolExecutorCoordinator"
 import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
@@ -39,6 +39,19 @@ export class AskFollowupQuestionToolHandler implements IToolHandler, IPartialBlo
 			return await config.callbacks.sayAndCreateMissingParamError(this.name, "question")
 		}
 		config.taskState.consecutiveMistakeCount = 0
+
+		// In yolo mode, don't wait for user input - instruct AI to use tools instead
+		if (config.yoloModeToggled) {
+			// Log the question that was asked but auto-respond
+			await config.callbacks.say(
+				"info",
+				`[YOLO MODE] Auto-responding to question: "${question.substring(0, 100)}${question.length > 100 ? "..." : ""}"`,
+			)
+
+			return formatResponse.toolResult(
+				`[YOLO MODE: User input is not available in non-interactive mode. You must use available tools (read_file, list_files, search_files, etc.) to gather the information you need instead of asking the user. Proceed with using tools to find the answer to your question: "${question}"]`,
+			)
+		}
 
 		// Show notification if enabled
 		if (config.autoApprovalSettings.enableNotifications) {

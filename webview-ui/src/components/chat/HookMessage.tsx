@@ -1,4 +1,4 @@
-import { ClineMessage } from "@shared/ExtensionMessage"
+import type { ClineMessage } from "@shared/ExtensionMessage"
 import { EmptyRequest } from "@shared/proto/cline/common"
 import { memo, useMemo, useState } from "react"
 import { TaskServiceClient } from "@/services/grpc-client"
@@ -81,11 +81,6 @@ interface HookMetadata {
  * - Running hooks: Always shows pending tool info
  */
 const HookMessage = memo(({ message, CommandOutput }: HookMessageProps) => {
-	// Log when component mounts/updates
-	console.log(
-		`[HOOK-UI RENDER] HookMessage rendering: ${JSON.stringify({ hookName: message.text?.substring(0, 100), ts: message.ts })}`,
-	)
-
 	// Parse hook metadata and output
 	const { metadata, output } = useMemo(() => {
 		const splitMessage = (text: string) => {
@@ -152,7 +147,8 @@ const HookMessage = memo(({ message, CommandOutput }: HookMessageProps) => {
 					style={{
 						color: normalColor,
 						marginBottom: "-1.5px",
-					}}></span>
+					}}
+				/>
 				<span style={{ color: normalColor, fontWeight: "bold" }}>Hook:</span>
 				<span style={{ color: normalColor }}>{metadata.hookName}</span>
 				{metadata.toolName && (
@@ -224,13 +220,10 @@ const HookMessage = memo(({ message, CommandOutput }: HookMessageProps) => {
 							</span>
 						)}
 					</div>
-					{isRunning && metadata.hookName !== "TaskCancel" && (
+					{isRunning && metadata.hookName !== "TaskCancel" && metadata.hookName !== "TaskComplete" && (
 						<button
 							onClick={(e) => {
 								e.stopPropagation()
-								console.log(
-									`[HOOK-UI CANCEL] Hook cancel button clicked for ${metadata.hookName}${metadata.toolName ? ` (${metadata.toolName})` : ""}`,
-								)
 								// Cancel the task - cancelling a hook always cancels the entire task
 								TaskServiceClient.cancelTask(EmptyRequest.create({})).catch((err) =>
 									console.error("Failed to cancel task:", err),

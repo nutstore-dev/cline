@@ -1,15 +1,15 @@
 import { getSavedApiConversationHistory, getSavedClineMessages } from "@core/storage/disk"
 import { WebviewProvider } from "@core/webview"
-import { Logger } from "@services/logging/Logger"
-import { AutoApprovalSettings, DEFAULT_AUTO_APPROVAL_SETTINGS } from "@shared/AutoApprovalSettings"
-import { ApiProvider } from "@shared/api"
-import { HistoryItem } from "@shared/HistoryItem"
+import { type AutoApprovalSettings, DEFAULT_AUTO_APPROVAL_SETTINGS } from "@shared/AutoApprovalSettings"
+import type { ApiProvider } from "@shared/api"
+import type { HistoryItem } from "@shared/HistoryItem"
 import { execa } from "execa"
 import * as http from "http"
 import * as path from "path"
 import * as vscode from "vscode"
-import { Controller } from "@/core/controller"
+import type { Controller } from "@/core/controller"
 import { ExtensionRegistryInfo } from "@/registry"
+import { Logger } from "@/shared/services/Logger"
 import { getCwd } from "@/utils/path"
 import { calculateToolSuccessRate, getFileChanges, initializeGitRepository, validateWorkspacePath } from "./GitHelper"
 
@@ -201,7 +201,6 @@ export async function createTestServer(controller: Controller): Promise<http.Ser
 					// Clear any existing task
 					await visibleWebview.controller.clearTask()
 
-					// TODO: convert apiKey to clineAccountId
 					// If API key is provided, update the API configuration
 					if (apiKey) {
 						Logger.log("API key provided, updating API configuration")

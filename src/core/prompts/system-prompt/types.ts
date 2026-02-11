@@ -2,11 +2,12 @@
  * Enhanced type definitions for better type safety and developer experience
  */
 
-import { ApiProviderInfo } from "@/core/api"
+import type { ApiProviderInfo } from "@/core/api"
 import type { McpHub } from "@/services/mcp/McpHub"
 import type { BrowserSettings } from "@/shared/BrowserSettings"
 import type { FocusChainSettings } from "@/shared/FocusChainSettings"
 import { ModelFamily } from "@/shared/prompts"
+import type { SkillMetadata } from "@/shared/skills"
 import { ClineDefaultTool } from "@/shared/tools"
 import type { ClineToolSpec } from "./spec"
 import { SystemPromptSection } from "./templates/placeholders"
@@ -94,25 +95,35 @@ export interface SystemPromptContext {
 	readonly providerInfo: ApiProviderInfo
 	readonly cwd?: string
 	readonly ide: string
+	readonly editorTabs?: {
+		readonly open?: readonly string[]
+		readonly visible?: readonly string[]
+	}
 	readonly supportsBrowserUse?: boolean
 	readonly mcpHub?: McpHub
+	readonly skills?: SkillMetadata[]
 	readonly focusChainSettings?: FocusChainSettings
 	readonly globalClineRulesFileInstructions?: string
 	readonly localClineRulesFileInstructions?: string
 	readonly localCursorRulesFileInstructions?: string
 	readonly localCursorRulesDirInstructions?: string
 	readonly localWindsurfRulesFileInstructions?: string
+	readonly localAgentsRulesFileInstructions?: string
 	readonly clineIgnoreInstructions?: string
 	readonly preferredLanguageInstructions?: string
 	readonly browserSettings?: BrowserSettings
 	readonly isTesting?: boolean
 	readonly runtimePlaceholders?: Readonly<Record<string, unknown>>
 	readonly yoloModeToggled?: boolean
+	readonly clineWebToolsEnabled?: boolean
 	readonly isMultiRootEnabled?: boolean
 	readonly workspaceRoots?: Array<{ path: string; name: string; vcs?: string }>
 	readonly isSubagentsEnabledAndCliInstalled?: boolean
 	readonly isCliSubagent?: boolean
+	readonly isCliEnvironment?: boolean
 	readonly enableNativeToolCalls?: boolean
+	readonly enableParallelToolCalling?: boolean
+	readonly terminalExecutionMode?: "vscodeTerminal" | "backgroundExec"
 }
 
 /**
@@ -256,7 +267,7 @@ export interface VariantSchema {
 export const TASK_PROGRESS_PARAMETER = {
 	name: "task_progress",
 	required: false,
-	instruction: `A checklist showing task progress after this tool use is completed. (See 'Updating Task Progress' section for more details)`,
+	instruction: `A checklist showing task progress after this tool use is completed. The task_progress parameter must be included as a separate parameter inside of the parent tool call, it must be separate from other parameters such as content, arguments, etc. (See 'UPDATING TASK PROGRESS' section for more details)`,
 	usage: "Checklist here (optional)",
 	dependencies: [ClineDefaultTool.TODO],
 }

@@ -1,5 +1,5 @@
 import { UpdateSettingsRequest } from "@shared/proto/cline/state"
-import { Mode } from "@shared/storage/types"
+import type { Mode } from "@shared/storage/types"
 import { VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
 import { useState } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
@@ -11,16 +11,17 @@ import { syncModeConfigurations } from "../utils/providerUtils"
 import { useApiConfigurationHandlers } from "../utils/useApiConfigurationHandlers"
 
 interface ApiConfigurationSectionProps {
-	renderSectionHeader: (tabId: string) => JSX.Element | null
+	renderSectionHeader?: (tabId: string) => JSX.Element | null
+	initialModelTab?: "recommended" | "free"
 }
 
-const ApiConfigurationSection = ({ renderSectionHeader }: ApiConfigurationSectionProps) => {
+const ApiConfigurationSection = ({ renderSectionHeader, initialModelTab }: ApiConfigurationSectionProps) => {
 	const { planActSeparateModelsSetting, mode, apiConfiguration } = useExtensionState()
 	const [currentTab, setCurrentTab] = useState<Mode>(mode)
 	const { handleFieldsChange } = useApiConfigurationHandlers()
 	return (
 		<div>
-			{renderSectionHeader("api-config")}
+			{renderSectionHeader?.("api-config")}
 			<Section>
 				{/* Tabs container */}
 				{planActSeparateModelsSetting ? (
@@ -50,11 +51,11 @@ const ApiConfigurationSection = ({ renderSectionHeader }: ApiConfigurationSectio
 
 						{/* Content container */}
 						<div className="-mb-3">
-							<ApiOptions currentMode={currentTab} showModelOptions={true} />
+							<ApiOptions currentMode={currentTab} initialModelTab={initialModelTab} showModelOptions={true} />
 						</div>
 					</div>
 				) : (
-					<ApiOptions currentMode={mode} showModelOptions={true} />
+					<ApiOptions currentMode={mode} initialModelTab={initialModelTab} showModelOptions={true} />
 				)}
 
 				<div className="mb-[5px]">

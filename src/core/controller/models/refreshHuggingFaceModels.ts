@@ -1,12 +1,14 @@
 import { huggingFaceModels } from "@shared/api"
-import { EmptyRequest } from "@shared/proto/cline/common"
+import type { EmptyRequest } from "@shared/proto/cline/common"
 import { OpenRouterCompatibleModelInfo, OpenRouterModelInfo } from "@shared/proto/cline/models"
 import { fileExistsAtPath } from "@utils/fs"
 import axios from "axios"
 import fs from "fs/promises"
 import path from "path"
 import { ensureCacheDirectoryExists } from "@/core/storage/disk"
-import { Controller } from ".."
+import { getAxiosSettings } from "@/shared/net"
+import { Logger } from "@/shared/services/Logger"
+import type { Controller } from ".."
 
 /**
  * Refreshes the Hugging Face models and returns the updated model list
@@ -26,6 +28,7 @@ export async function refreshHuggingFaceModels(
 		// Fetch models from Hugging Face API
 		const response = await axios.get("https://router.huggingface.co/v1/models", {
 			timeout: 10000,
+			...getAxiosSettings(),
 		})
 
 		if (response.data?.data) {
@@ -65,7 +68,7 @@ export async function refreshHuggingFaceModels(
 			await fs.writeFile(huggingFaceModelsFilePath, JSON.stringify(models, null, 2))
 		}
 	} catch (error) {
-		console.error("Error fetching Hugging Face models:", error)
+		Logger.error("Error fetching Hugging Face models:", error)
 
 		// Try to load from cache
 		try {
@@ -75,7 +78,7 @@ export async function refreshHuggingFaceModels(
 				models = parsedModels
 			}
 		} catch (cacheError) {
-			console.error("Error loading cached Hugging Face models:", cacheError)
+			Logger.error("Error loading cached Hugging Face models:", cacheError)
 		}
 
 		// If no cache available, use static models as fallback

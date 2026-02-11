@@ -1,13 +1,15 @@
-import { Anthropic } from "@anthropic-ai/sdk"
-import { DeepSeekModelId, deepSeekDefaultModelId, deepSeekModels, ModelInfo } from "@shared/api"
+import { type DeepSeekModelId, deepSeekDefaultModelId, deepSeekModels, type ModelInfo } from "@shared/api"
 import { calculateApiCostOpenAI } from "@utils/cost"
 import OpenAI from "openai"
 import type { ChatCompletionTool as OpenAITool } from "openai/resources/chat/completions"
-import { ApiHandler, CommonApiHandlerOptions } from "../"
+import { buildExternalBasicHeaders } from "@/services/EnvUtils"
+import type { ClineStorageMessage } from "@/shared/messages/content"
+import { fetch } from "@/shared/net"
+import type { ApiHandler, CommonApiHandlerOptions } from "../"
 import { withRetry } from "../retry"
 import { convertToOpenAiMessages } from "../transform/openai-format"
-import { convertToR1Format } from "../transform/r1-format"
-import { ApiStream } from "../transform/stream"
+import { addReasoningContent } from "../transform/r1-format"
+import type { ApiStream } from "../transform/stream"
 import { getOpenAIToolParams, ToolCallProcessor } from "../transform/tool-call-processor"
 
 interface DeepSeekHandlerOptions extends CommonApiHandlerOptions {
@@ -32,6 +34,8 @@ export class DeepSeekHandler implements ApiHandler {
 				this.client = new OpenAI({
 					baseURL: "https://api.deepseek.com/v1",
 					apiKey: this.options.deepSeekApiKey,
+					defaultHeaders: buildExternalBasicHeaders(),
+					fetch, // Use configured fetch with proxy support
 				})
 			} catch (error) {
 				throw new Error(`Error creating DeepSeek client: ${error.message}`)
@@ -73,20 +77,16 @@ export class DeepSeekHandler implements ApiHandler {
 	}
 
 	@withRetry()
-	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[], tools?: OpenAITool[]): ApiStream {
+	async *createMessage(systemPrompt: string, messages: ClineStorageMessage[], tools?: OpenAITool[]): ApiStream {
 		const client = this.ensureClient()
 		const model = this.getModel()
 
 		const isDeepseekReasoner = model.id.includes("deepseek-reasoner")
 
-		let openAiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-			{ role: "system", content: systemPrompt },
-			...convertToOpenAiMessages(messages),
-		]
-
-		if (isDeepseekReasoner) {
-			openAiMessages = convertToR1Format([{ role: "user", content: systemPrompt }, ...messages])
-		}
+		const convertedMessages = convertToOpenAiMessages(messages)
+		const openAiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = isDeepseekReasoner
+			? [{ role: "system", content: systemPrompt }, ...addReasoningContent(convertedMessages, messages)]
+			: [{ role: "system", content: systemPrompt }, ...convertedMessages]
 
 		const stream = await client.chat.completions.create({
 			model: model.id,
@@ -102,7 +102,7 @@ export class DeepSeekHandler implements ApiHandler {
 		const toolCallProcessor = new ToolCallProcessor()
 
 		for await (const chunk of stream) {
-			const delta = chunk.choices[0]?.delta
+			const delta = chunk.choices?.[0]?.delta
 			if (delta?.content) {
 				yield {
 					type: "text",

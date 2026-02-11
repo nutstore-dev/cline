@@ -1,12 +1,14 @@
-import { Anthropic } from "@anthropic-ai/sdk"
-import { GroqModelId, groqDefaultModelId, groqModels, ModelInfo } from "@shared/api"
+import { type GroqModelId, groqDefaultModelId, groqModels, type ModelInfo } from "@shared/api"
 import { calculateApiCostOpenAI } from "@utils/cost"
 import OpenAI from "openai"
 import type { ChatCompletionTool as OpenAITool } from "openai/resources/chat/completions"
-import { ApiHandler, CommonApiHandlerOptions } from "../"
+import { buildExternalBasicHeaders } from "@/services/EnvUtils"
+import type { ClineStorageMessage } from "@/shared/messages/content"
+import { fetch } from "@/shared/net"
+import type { ApiHandler, CommonApiHandlerOptions } from "../"
 import { withRetry } from "../retry"
 import { convertToOpenAiMessages } from "../transform/openai-format"
-import { ApiStream } from "../transform/stream"
+import type { ApiStream } from "../transform/stream"
 import { getOpenAIToolParams, ToolCallProcessor } from "../transform/tool-call-processor"
 
 interface GroqHandlerOptions extends CommonApiHandlerOptions {
@@ -102,6 +104,8 @@ export class GroqHandler implements ApiHandler {
 				this.client = new OpenAI({
 					baseURL: "https://api.groq.com/openai/v1",
 					apiKey: this.options.groqApiKey,
+					defaultHeaders: buildExternalBasicHeaders(),
+					fetch, // Use configured fetch with proxy support
 				})
 			} catch (error) {
 				throw new Error(`Error creating Groq client: ${error.message}`)
@@ -190,7 +194,7 @@ export class GroqHandler implements ApiHandler {
 	}
 
 	@withRetry()
-	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[], tools?: OpenAITool[]): ApiStream {
+	async *createMessage(systemPrompt: string, messages: ClineStorageMessage[], tools?: OpenAITool[]): ApiStream {
 		const client = this.ensureClient()
 		const model = this.getModel()
 		const modelFamily = this.detectModelFamily(model.id)
@@ -227,7 +231,7 @@ export class GroqHandler implements ApiHandler {
 		const stream = await client.chat.completions.create(requestParams)
 
 		for await (const chunk of stream) {
-			const delta = chunk.choices[0]?.delta
+			const delta = chunk.choices?.[0]?.delta
 
 			// Handle reasoning field if present (for reasoning models with parsed output)
 			if ((delta as any)?.reasoning) {

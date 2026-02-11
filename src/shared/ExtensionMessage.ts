@@ -1,20 +1,23 @@
 // type that represents json data that is sent from extension to webview, called ExtensionMessage and has 'type' enum which can be 'plusButtonClicked' or 'settingsButtonClicked' or 'hello'
 
-import { WorkspaceRoot } from "@shared/multi-root/types"
-import { GlobalStateAndSettings } from "@shared/storage/state-keys"
+import type { WorkspaceRoot } from "@shared/multi-root/types"
+import type { RemoteConfigFields } from "@shared/storage/state-keys"
 import type { Environment } from "../config"
-import { AutoApprovalSettings } from "./AutoApprovalSettings"
-import { ApiConfiguration } from "./api"
-import { BrowserSettings } from "./BrowserSettings"
-import { ClineFeatureSetting } from "./ClineFeatureSetting"
-import { ClineRulesToggles } from "./cline-rules"
-import { DictationSettings } from "./DictationSettings"
-import { FocusChainSettings } from "./FocusChainSettings"
-import { HistoryItem } from "./HistoryItem"
-import { McpDisplayMode } from "./McpDisplayMode"
-import { Mode, OpenaiReasoningEffort } from "./storage/types"
-import { TelemetrySetting } from "./TelemetrySetting"
-import { UserInfo } from "./UserInfo"
+import type { AutoApprovalSettings } from "./AutoApprovalSettings"
+import type { ApiConfiguration } from "./api"
+import type { BrowserSettings } from "./BrowserSettings"
+import type { ClineFeatureSetting } from "./ClineFeatureSetting"
+import type { BannerCardData } from "./cline/banner"
+import type { ClineRulesToggles } from "./cline-rules"
+import type { DictationSettings } from "./DictationSettings"
+import type { FocusChainSettings } from "./FocusChainSettings"
+import type { HistoryItem } from "./HistoryItem"
+import type { McpDisplayMode } from "./McpDisplayMode"
+import type { ClineMessageModelInfo } from "./messages"
+import type { OnboardingModelGroup } from "./proto/cline/state"
+import type { Mode, OpenaiReasoningEffort } from "./storage/types"
+import type { TelemetrySetting } from "./TelemetrySetting"
+import type { UserInfo } from "./UserInfo"
 // webview will hold state
 export interface ExtensionMessage {
 	type: "grpc_response" // New type for gRPC responses
@@ -38,6 +41,7 @@ export const COMMAND_CANCEL_TOKEN = "__cline_command_cancel__"
 export interface ExtensionState {
 	isNewUser: boolean
 	welcomeViewCompleted: boolean
+	onboardingModels: OnboardingModelGroup | undefined
 	apiConfiguration?: ApiConfiguration
 	autoApprovalSettings: AutoApprovalSettings
 	browserSettings: BrowserSettings
@@ -55,6 +59,7 @@ export interface ExtensionState {
 	enableCheckpointsSetting?: boolean
 	platform: Platform
 	environment?: Environment
+	uriScheme?: string
 	shouldShowAnnouncement: boolean
 	taskHistory: HistoryItem[]
 	telemetrySetting: TelemetrySetting
@@ -77,10 +82,15 @@ export interface ExtensionState {
 	globalWorkflowToggles: ClineRulesToggles
 	localCursorRulesToggles: ClineRulesToggles
 	localWindsurfRulesToggles: ClineRulesToggles
+	remoteRulesToggles?: ClineRulesToggles
+	remoteWorkflowToggles?: ClineRulesToggles
+	localAgentsRulesToggles: ClineRulesToggles
 	mcpResponsesCollapsed?: boolean
 	strictPlanModeEnabled?: boolean
 	yoloModeToggled?: boolean
 	useAutoCondense?: boolean
+	clineWebToolsEnabled?: ClineFeatureSetting
+	worktreesEnabled?: ClineFeatureSetting
 	focusChainSettings: FocusChainSettings
 	dictationSettings: DictationSettings
 	customPrompt?: string
@@ -94,11 +104,18 @@ export interface ExtensionState {
 	lastDismissedInfoBannerVersion: number
 	lastDismissedModelBannerVersion: number
 	lastDismissedCliBannerVersion: number
-	hooksEnabled?: ClineFeatureSetting
-	remoteConfigSettings?: Partial<GlobalStateAndSettings> & { remoteConfiguredProviders?: string[] }
+	dismissedBanners?: Array<{ bannerId: string; dismissedAt: number }>
+	hooksEnabled?: boolean
+	remoteConfigSettings?: Partial<RemoteConfigFields>
 	subagentsEnabled?: boolean
-	nativeToolCallSetting?: ClineFeatureSetting
-	uriScheme?: string
+	globalSkillsToggles?: Record<string, boolean>
+	localSkillsToggles?: Record<string, boolean>
+	nativeToolCallSetting?: boolean
+	enableParallelToolCalling?: boolean
+	backgroundEditEnabled?: boolean
+	optOutOfRemoteConfig?: boolean
+	banners?: BannerCardData[]
+	openAiCodexIsAuthenticated?: boolean
 }
 
 export interface ClineMessage {
@@ -117,11 +134,13 @@ export interface ClineMessage {
 	isOperationOutsideWorkspace?: boolean
 	conversationHistoryIndex?: number
 	conversationHistoryDeletedRange?: [number, number] // for when conversation history is truncated for API requests
+	modelInfo?: ClineMessageModelInfo
 }
 
 export type ClineAsk =
 	| "followup"
 	| "plan_mode_respond"
+	| "act_mode_respond"
 	| "command"
 	| "command_output"
 	| "completion_result"
@@ -164,30 +183,38 @@ export type ClineSay =
 	| "diff_error"
 	| "deleted_api_reqs"
 	| "clineignore_error"
+	| "command_permission_denied"
 	| "checkpoint_created"
 	| "load_mcp_documentation"
+	| "generate_explanation"
 	| "info" // Added for general informational messages like retry status
 	| "task_progress"
-	| "hook"
-	| "hook_output"
+	| "hook_status"
+	| "hook_output_stream"
+	| "conditional_rules_applied"
 
 export interface ClineSayTool {
 	tool:
 		| "editedExistingFile"
 		| "newFileCreated"
+		| "fileDeleted"
 		| "readFile"
 		| "listFilesTopLevel"
 		| "listFilesRecursive"
 		| "listCodeDefinitionNames"
 		| "searchFiles"
 		| "webFetch"
+		| "webSearch"
 		| "summarizeTask"
+		| "useSkill"
 	path?: string
 	diff?: string
 	content?: string
 	regex?: string
 	filePattern?: string
 	operationIsLocatedInWorkspace?: boolean
+	/** Starting line numbers in the original file where each SEARCH block matched */
+	startLineNumbers?: number[]
 }
 
 export interface ClineSayHook {
@@ -218,6 +245,13 @@ export interface ClineSayHook {
 	}
 }
 
+export type HookOutputStreamMeta = {
+	/** Which hook configuration the script originated from (global vs workspace). */
+	source: "global" | "workspace"
+	/** Full path to the hook script that emitted the output. */
+	scriptPath: string
+}
+
 // must keep in sync with system prompt
 export const browserActions = ["launch", "click", "type", "scroll_down", "scroll_up", "close"] as const
 export type BrowserAction = (typeof browserActions)[number]
@@ -226,6 +260,14 @@ export interface ClineSayBrowserAction {
 	action: BrowserAction
 	coordinate?: string
 	text?: string
+}
+
+export interface ClineSayGenerateExplanation {
+	title: string
+	fromRef: string
+	toRef: string
+	status: "generating" | "complete" | "error"
+	error?: string
 }
 
 export type BrowserActionResult = {

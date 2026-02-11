@@ -1,12 +1,13 @@
-import { Anthropic } from "@anthropic-ai/sdk"
 import { type ModelInfo, type NebiusModelId, nebiusDefaultModelId, nebiusModels } from "@shared/api"
-import OpenAI from "openai"
+import type OpenAI from "openai"
 import type { ChatCompletionTool as OpenAITool } from "openai/resources/chat/completions"
-import { ApiHandler, CommonApiHandlerOptions } from "../index"
+import type { ClineStorageMessage } from "@/shared/messages/content"
+import { createOpenAIClient } from "@/shared/net"
+import type { ApiHandler, CommonApiHandlerOptions } from "../index"
 import { withRetry } from "../retry"
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { convertToR1Format } from "../transform/r1-format"
-import { ApiStream } from "../transform/stream"
+import type { ApiStream } from "../transform/stream"
 import { getOpenAIToolParams, ToolCallProcessor } from "../transform/tool-call-processor"
 
 interface NebiusHandlerOptions extends CommonApiHandlerOptions {
@@ -25,7 +26,7 @@ export class NebiusHandler implements ApiHandler {
 				throw new Error("Nebius API key is required")
 			}
 			try {
-				this.client = new OpenAI({
+				this.client = createOpenAIClient({
 					baseURL: "https://api.studio.nebius.ai/v1",
 					apiKey: this.options.nebiusApiKey,
 				})
@@ -37,7 +38,7 @@ export class NebiusHandler implements ApiHandler {
 	}
 
 	@withRetry()
-	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[], tools?: OpenAITool[]): ApiStream {
+	async *createMessage(systemPrompt: string, messages: ClineStorageMessage[], tools?: OpenAITool[]): ApiStream {
 		const client = this.ensureClient()
 		const model = this.getModel()
 
@@ -55,7 +56,7 @@ export class NebiusHandler implements ApiHandler {
 		})
 		const toolCallProcessor = new ToolCallProcessor()
 		for await (const chunk of stream) {
-			const delta = chunk.choices[0]?.delta
+			const delta = chunk.choices?.[0]?.delta
 			if (delta?.content) {
 				yield {
 					type: "text",

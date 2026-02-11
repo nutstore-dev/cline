@@ -4,7 +4,17 @@ import axios from "axios"
 import cloneDeep from "clone-deep"
 import fs from "fs/promises"
 import path from "path"
-import { CLAUDE_SONNET_1M_TIERS, openRouterClaudeSonnet41mModelId, openRouterClaudeSonnet451mModelId } from "@/shared/api"
+import { StateManager } from "@/core/storage/StateManager"
+import {
+	ANTHROPIC_MAX_THINKING_BUDGET,
+	CLAUDE_OPUS_1M_TIERS,
+	CLAUDE_SONNET_1M_TIERS,
+	openRouterClaudeOpus461mModelId,
+	openRouterClaudeSonnet41mModelId,
+	openRouterClaudeSonnet451mModelId,
+} from "@/shared/api"
+import { getAxiosSettings } from "@/shared/net"
+import { Logger } from "@/shared/services/Logger"
 import type { Controller } from ".."
 
 type OpenRouterSupportedParams =
@@ -59,11 +69,13 @@ interface OpenRouterRawModelInfo {
 		input_cache_read: string
 		input_cache_write: string
 	} | null
-	thinking_config: Record<string, unknown> | null
 	supports_global_endpoint: boolean | null
 	tiers: any[] | null
 	supported_parameters?: OpenRouterSupportedParams[] | null
 }
+
+// Track pending refresh promise to prevent duplicate concurrent fetches
+let pendingRefresh: Promise<Record<string, ModelInfo>> | null = null
 
 /**
  * Core function: Refreshes the OpenRouter models and returns application types
@@ -71,23 +83,50 @@ interface OpenRouterRawModelInfo {
  * @returns Record of model ID to ModelInfo (application types)
  */
 export async function refreshOpenRouterModels(controller: Controller): Promise<Record<string, ModelInfo>> {
+	// Check in-memory cache first
+	const cache = StateManager.get().getModelsCache("openRouter")
+	if (cache) {
+		return cache
+	}
+
+	// If a fetch is already in progress, return the same promise
+	if (pendingRefresh) {
+		return pendingRefresh
+	}
+
+	// Start new fetch and track the promise
+	pendingRefresh = (async () => {
+		try {
+			return await fetchAndCacheModels(controller)
+		} finally {
+			// Clear pending promise when done (success or error)
+			pendingRefresh = null
+		}
+	})()
+
+	return pendingRefresh
+}
+
+async function fetchAndCacheModels(controller: Controller): Promise<Record<string, ModelInfo>> {
 	const openRouterModelsFilePath = path.join(await ensureCacheDirectoryExists(), GlobalFileNames.openRouterModels)
 
-	const models: Record<string, ModelInfo> = {}
+	let models: Record<string, ModelInfo> = {}
 	try {
-		const response = await axios.get("https://openrouter.ai/api/v1/models")
+		const response = await axios.get("https://openrouter.ai/api/v1/models", getAxiosSettings())
 
 		if (response.data?.data) {
 			const rawModels = response.data.data
 			const parsePrice = (price: any) => {
 				if (price) {
-					return parseFloat(price) * 1_000_000
+					return Number.parseFloat(price) * 1_000_000
 				}
 				return undefined
 			}
 			for (const rawModel of rawModels as OpenRouterRawModelInfo[]) {
-				const supportThinking = rawModel.supported_parameters?.some((p) => p === "include_reasoning")
+				const supportThinking = rawModel.supported_parameters?.some((p) => p === "include_reasoning" || p === "reasoning")
+
 				const modelInfo: ModelInfo = {
+					name: rawModel.name,
 					maxTokens: rawModel.top_provider?.max_completion_tokens ?? 0,
 					contextWindow: rawModel.context_length ?? 0,
 					supportsImages: rawModel.architecture?.modality?.includes("image") ?? false,
@@ -97,7 +136,9 @@ export async function refreshOpenRouterModels(controller: Controller): Promise<R
 					cacheWritesPrice: parsePrice(rawModel.pricing?.input_cache_write),
 					cacheReadsPrice: parsePrice(rawModel.pricing?.input_cache_read),
 					description: rawModel.description ?? "",
-					thinkingConfig: (supportThinking && rawModel.thinking_config) || undefined,
+					// If thinking is supported, set maxBudget with a default value as a placeholder
+					// to ensure it has a valid thinkingConfig that lets the application know thinking is supported.
+					thinkingConfig: supportThinking ? { maxBudget: ANTHROPIC_MAX_THINKING_BUDGET } : undefined,
 					supportsGlobalEndpoint: rawModel.supports_global_endpoint ?? undefined,
 					tiers: rawModel.tiers ?? undefined,
 				}
@@ -123,6 +164,17 @@ export async function refreshOpenRouterModels(controller: Controller): Promise<R
 						modelInfo.supportsPromptCache = true
 						modelInfo.cacheWritesPrice = 3.75
 						modelInfo.cacheReadsPrice = 0.3
+						break
+					case "anthropic/claude-opus-4.6":
+						modelInfo.contextWindow = 200_000 // restrict to 200k, 1m variant created below
+						modelInfo.supportsPromptCache = true
+						modelInfo.cacheWritesPrice = 6.25
+						modelInfo.cacheReadsPrice = 0.5
+						break
+					case "anthropic/claude-opus-4.5":
+						modelInfo.supportsPromptCache = true
+						modelInfo.cacheWritesPrice = 6.25
+						modelInfo.cacheReadsPrice = 0.5
 						break
 					case "anthropic/claude-opus-4.1":
 					case "anthropic/claude-opus-4":
@@ -211,7 +263,7 @@ export async function refreshOpenRouterModels(controller: Controller): Promise<R
 
 				models[rawModel.id] = modelInfo
 
-				// add custom :1m model variant
+				// add custom :1m model variant for sonnet
 				if (rawModel.id === "anthropic/claude-sonnet-4" || rawModel.id === "anthropic/claude-sonnet-4.5") {
 					const claudeSonnet1mModelInfo = cloneDeep(modelInfo)
 					claudeSonnet1mModelInfo.contextWindow = 1_000_000 // limiting providers to those that support 1m context window
@@ -221,32 +273,54 @@ export async function refreshOpenRouterModels(controller: Controller): Promise<R
 					// sonnet 4.5
 					models[openRouterClaudeSonnet451mModelId] = claudeSonnet1mModelInfo
 				}
+
+				// add custom :1m model variant for opus 4.6
+				if (rawModel.id === "anthropic/claude-opus-4.6") {
+					const claudeOpus1mModelInfo = cloneDeep(modelInfo)
+					claudeOpus1mModelInfo.contextWindow = 1_000_000
+					claudeOpus1mModelInfo.tiers = CLAUDE_OPUS_1M_TIERS
+					models[openRouterClaudeOpus461mModelId] = claudeOpus1mModelInfo
+				}
 			}
+			// Save models and cache them in memory
+			await fs.writeFile(openRouterModelsFilePath, JSON.stringify(models))
+			Logger.log("OpenRouter models fetched and saved")
 		} else {
-			console.error("Invalid response from OpenRouter API")
+			throw new Error("Invalid response data when fetching OpenRouter models")
 		}
-		await fs.writeFile(openRouterModelsFilePath, JSON.stringify(models))
-		console.log("OpenRouter models fetched and saved", JSON.stringify(models).slice(0, 300))
 	} catch (error) {
-		console.error("Error fetching OpenRouter models:", error)
+		Logger.error("Error fetching OpenRouter models:", error)
 
 		// If we failed to fetch models, try to read cached models
 		const cachedModels = await controller.readOpenRouterModels()
 		if (cachedModels) {
-			// Cached models are already in application format (ModelInfo)
-			return appendClineStealthModels(cachedModels as Record<string, ModelInfo>)
+			models = cachedModels
 		}
 	}
+
 	// Append stealth models if any
-	return appendClineStealthModels(models)
+	const finalModels = appendClineStealthModels(models)
+
+	// Store in StateManager's in-memory cache
+	StateManager.get().setModelsCache("openRouter", finalModels)
+
+	return finalModels
 }
 
 /**
  * Stealth models are models that are compatible with the OpenRouter API but not listed on the OpenRouter website or API.
  */
 const CLINE_STEALTH_MODELS: Record<string, ModelInfo> = {
-	// Add more stealth models here as needed
-	// Right now this list is empty as the latest stealth model was removed
+	"stealth/giga-potato": {
+		name: "Giga Potato",
+		maxTokens: 8192,
+		contextWindow: 224_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 0,
+		outputPrice: 0,
+		description: "A stealth model for testing purposes. Not a real potato.",
+	},
 }
 
 export function appendClineStealthModels(currentModels: Record<string, ModelInfo>): Record<string, ModelInfo> {
